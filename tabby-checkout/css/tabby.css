@@ -1,0 +1,14 @@
+#place_order:disabled {
+    opacity:0.5; 
+    text-decoration: none !important;
+}
+.payment_method_tabby_pay_later img, .payment_method_tabby_installments img {
+    max-height: 2em;
+    max-width: 5em;
+}
+.wc_payment_method .info {
+    float: right;
+}
+html[dir=rtl] .wc_payment_method .info {
+    float: left;
+}

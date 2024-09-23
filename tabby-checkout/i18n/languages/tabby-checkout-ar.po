@@ -1,0 +1,352 @@
+# Copyright (C) 2023 Tabby
+# This file is distributed under the same license as the Tabby Checkout plugin.
+msgid ""
+msgstr ""
+"Project-Id-Version: Tabby Checkout 4.5.10\n"
+"Report-Msgid-Bugs-To: https://wordpress.org/support/plugin/tabby-checkout\n"
+"Last-Translator: Sergey Balitsky <sergey.balitsky@tabby.ai>\n"
+"Language-Team: Translations <translations@tabby.ai>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"POT-Creation-Date: 2023-05-05T12:26:12+00:00\n"
+"PO-Revision-Date: 2023-05-05 10:00+03\n"
+"X-Generator: WP-CLI 2.4.0\n"
+"X-Domain: tabby-checkout\n"
+
+#. Plugin Name of the plugin
+#. Description of the plugin
+msgid "Tabby Checkout"
+msgstr ""
+
+#. Plugin URI of the plugin
+msgid "https://tabby.ai/"
+msgstr ""
+
+#. Author of the plugin
+msgid "Tabby"
+msgstr ""
+
+#. Author URI of the plugin
+msgid "https://tabby.ai"
+msgstr ""
+
+#: includes/class-wc-gateway-tabby-checkout-base.php:76
+msgid "Enable/Disable"
+msgstr ""
+
+#: includes/class-wc-gateway-tabby-checkout-base.php:78
+msgid "Enable "
+msgstr ""
+
+#: includes/class-wc-gateway-tabby-checkout-base.php:82
+msgid "Title"
+msgstr ""
+
+#: includes/class-wc-gateway-tabby-checkout-base.php:84
+msgid "This controls the title which the user sees during checkout."
+msgstr ""
+
+#: includes/class-wc-gateway-tabby-checkout-base.php:89
+msgid "Method Description"
+msgstr ""
+
+#: includes/class-wc-gateway-tabby-checkout-base.php:92
+msgid "PromoCardWide"
+msgstr ""
+
+#: includes/class-wc-gateway-tabby-checkout-base.php:93
+msgid "PromoCard"
+msgstr ""
+
+#: includes/class-wc-gateway-tabby-checkout-base.php:94
+msgid "Text description"
+msgstr ""
+
+#: includes/class-wc-gateway-tabby-checkout-base.php:95
+msgid "Blanc description"
+msgstr ""
+
+#: includes/class-wc-gateway-tabby-checkout-base.php:97
+msgid "This controls the description which the user sees during checkout."
+msgstr ""
+
+#: includes/class-wc-gateway-tabby-checkout-base.php:101
+msgid "Promo Card Theme"
+msgstr ""
+
+#: includes/class-wc-gateway-tabby-checkout-base.php:110
+msgid "Tabby API Public or Secret key is not configured."
+msgstr ""
+
+#. translators: %s is replaced with the url of Tabby settings page
+#: includes/class-wc-gateway-tabby-checkout-base.php:112
+msgid "Please configure Tabby API settings <a href=\"%s\">here</a>."
+msgstr ""
+
+#: includes/class-wc-gateway-tabby-checkout-base.php:162
+msgid "Sorry Tabby is unable to approve this purchase, please use an alternative payment method for your order."
+msgstr "نأسف، تابي غير قادرة على الموافقة على هذه العملية. الرجاء استخدام طريقة دفع أخرى."
+
+#. translators: %s is replaced with Tabby payment ID
+#: includes/class-wc-gateway-tabby-checkout-base.php:367
+#: includes/class-wc-gateway-tabby-checkout-base.php:413
+msgid "Payment assigned. ID: %s"
+msgstr ""
+
+#: includes/class-wc-gateway-tabby-checkout-base.php:373
+#: includes/class-wc-gateway-tabby-checkout-base.php:376
+msgid "Api error, please try again later."
+msgstr ""
+
+#. translators: %s is replaced with Tabby payment ID
+#: includes/class-wc-gateway-tabby-checkout-base.php:432
+msgid "Payment created. ID: %s"
+msgstr ""
+
+#. translators: %s is replaced with Tabby payment ID
+#: includes/class-wc-gateway-tabby-checkout-base.php:437
+msgid "Payment %s is REJECTED"
+msgstr ""
+
+#. translators: %s is replaced with Tabby payment ID
+#: includes/class-wc-gateway-tabby-checkout-base.php:441
+msgid "Payment %s is EXPIRED"
+msgstr ""
+
+#. translators: %s is replaced with Tabby payment ID
+#: includes/class-wc-gateway-tabby-checkout-base.php:448
+msgid "Payment authorized. ID: %s"
+msgstr ""
+
+#. translators: %1$s is replaced with Tabby payment ID, %2$s is replaced with payment currency
+#: includes/class-wc-gateway-tabby-checkout-base.php:453
+msgid "Payment failed. ID: %1$s. Total missmatch. Transaction amount: %2$s"
+msgstr ""
+
+#. translators: %s is replaced with Tabby capture ID
+#: includes/class-wc-gateway-tabby-checkout-base.php:538
+msgid "Payment captured. ID: %s"
+msgstr ""
+
+#: includes/class-wc-gateway-tabby-checkout-base.php:560
+msgid "Order payment captured. Please refund order."
+msgstr ""
+
+#: includes/class-wc-gateway-tabby-checkout-base.php:584
+msgid "Tabby payment closed"
+msgstr ""
+
+#: includes/class-wc-gateway-tabby-checkout-base.php:613
+msgid "Cannot find refund object"
+msgstr ""
+
+#: includes/class-wc-gateway-tabby-checkout-base.php:616
+msgid "Refund failed."
+msgstr ""
+
+#: includes/class-wc-gateway-tabby-checkout-base.php:643
+msgid "Something wrong"
+msgstr ""
+
+#. translators: %1$s is replaced with payment amount, %2$s is replaced with Tabby refund ID
+#: includes/class-wc-gateway-tabby-checkout-base.php:649
+msgid "Refunded %1$s - Refund ID: %2$s"
+msgstr ""
+
+#: includes/class-wc-gateway-tabby-credit-card-installments.php:7
+msgid "Pay in 4 credit card installments."
+msgstr "قسّمها البطاقة الائتمانية على 4 دفعات."
+
+#: includes/class-wc-gateway-tabby-credit-card-installments.php:8
+msgid "No fees. Pay with any credit card."
+msgstr "بدون أي رسوم. ادفع بأي بطاقة ائتمانية."
+
+#: includes/class-wc-gateway-tabby-installments.php:5
+msgid "Pay in 4. No interest, no fees."
+msgstr "قسّمها على 4. بدون أي فوائد، أو رسوم."
+
+#: includes/class-wc-gateway-tabby-installments.php:6
+msgid "Use any card."
+msgstr "استخدم أي بطاقة"
+
+#: includes/class-wc-settings-tab-tabby.php:15
+msgid "Tabby API"
+msgstr ""
+
+#: includes/class-wc-settings-tab-tabby.php:61
+msgid "Tabby Checkout API"
+msgstr ""
+
+#: includes/class-wc-settings-tab-tabby.php:63
+msgid "The following options are used to configure Tabby Checkout API"
+msgstr ""
+
+#: includes/class-wc-settings-tab-tabby.php:67
+msgid "Merchant Public Key"
+msgstr ""
+
+#: includes/class-wc-settings-tab-tabby.php:70
+msgid "Used for public API calls<br /><b>pk_[test_]xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx</b>"
+msgstr ""
+
+#: includes/class-wc-settings-tab-tabby.php:77
+msgid "Merchant Secret Key"
+msgstr ""
+
+#: includes/class-wc-settings-tab-tabby.php:80
+msgid "Used for server to server calls<br /><b>sk_[test_]xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx</b>"
+msgstr ""
+
+#: includes/class-wc-settings-tab-tabby.php:87
+msgid "Tabby Language"
+msgstr ""
+
+#: includes/class-wc-settings-tab-tabby.php:90
+msgid "Tabby popup language"
+msgstr ""
+
+#: includes/class-wc-settings-tab-tabby.php:92
+msgid "Auto"
+msgstr ""
+
+#: includes/class-wc-settings-tab-tabby.php:93
+msgid "English"
+msgstr ""
+
+#: includes/class-wc-settings-tab-tabby.php:94
+msgid "Arabic"
+msgstr ""
+
+#: includes/class-wc-settings-tab-tabby.php:99
+msgid "Tabby order timeout, mins"
+msgstr ""
+
+#: includes/class-wc-settings-tab-tabby.php:102
+msgid "Used for deleting unpaid orders"
+msgstr ""
+
+#: includes/class-wc-settings-tab-tabby.php:113
+msgid "Action on Failed Payment"
+msgstr ""
+
+#: includes/class-wc-settings-tab-tabby.php:116
+msgid "Delete or cancel unpaid orders"
+msgstr ""
+
+#: includes/class-wc-settings-tab-tabby.php:119
+msgid "Cancel & Delete"
+msgstr ""
+
+#: includes/class-wc-settings-tab-tabby.php:120
+msgid "Cancel & Move to Trash"
+msgstr ""
+
+#: includes/class-wc-settings-tab-tabby.php:121
+msgid "Cancel Only"
+msgstr ""
+
+#: includes/class-wc-settings-tab-tabby.php:127
+msgid "Use phone number for order history lookup"
+msgstr ""
+
+#: includes/class-wc-settings-tab-tabby.php:130
+msgid "Add order history by phone"
+msgstr ""
+
+#: includes/class-wc-settings-tab-tabby.php:134
+msgid "Capture payment on checkout"
+msgstr ""
+
+#: includes/class-wc-settings-tab-tabby.php:137
+msgid "Enable payment capture on checkout"
+msgstr ""
+
+#: includes/class-wc-settings-tab-tabby.php:141
+msgid "Tabby promotions (product)"
+msgstr ""
+
+#: includes/class-wc-settings-tab-tabby.php:144
+msgid "Enable Tabby promo on product view pages"
+msgstr ""
+
+#: includes/class-wc-settings-tab-tabby.php:148
+msgid "Tabby promotions (cart page)"
+msgstr ""
+
+#: includes/class-wc-settings-tab-tabby.php:151
+msgid "Enable Tabby promo on shopping cart page"
+msgstr ""
+
+#: includes/class-wc-settings-tab-tabby.php:155
+msgid "Minimum price for Tabby promo"
+msgstr ""
+
+#: includes/class-wc-settings-tab-tabby.php:158
+msgid "Minimum price showing Tabby promotions, 0 for unlimited"
+msgstr ""
+
+#: includes/class-wc-settings-tab-tabby.php:169
+msgid "Tabby promo max price"
+msgstr ""
+
+#: includes/class-wc-settings-tab-tabby.php:172
+msgid "Maximum product price for showing Tabby promotions, 0 for unlimited"
+msgstr ""
+
+#: includes/class-wc-settings-tab-tabby.php:183
+msgid "Promotion snippets (additional settings)"
+msgstr ""
+
+#: includes/class-wc-settings-tab-tabby.php:186
+msgid ""
+"Please use this settings only in case if you have the recommendations from Tabby team.<br />\n"
+"<br />\n"
+"Set up -1 for Standard promotion snippets as a default value<br />\n"
+"Set up 0 for Credit Card installments promotion snippets as a default value<br />\n"
+"Set up the limit between 0 - 50000 to show Standard promotion snippets for the amount which is  lower than the limit and Credit Card installments promotion snippets for the amount which is higher than the limit. "
+msgstr ""
+
+#: includes/class-wc-settings-tab-tabby.php:201
+msgid "Tabby promotions theme"
+msgstr ""
+
+#: includes/class-wc-settings-tab-tabby.php:204
+msgid "Used for styling Tabby promotions widget (blank for default)"
+msgstr ""
+
+#: includes/class-wc-settings-tab-tabby.php:213
+msgid "Allowed Countries"
+msgstr ""
+
+#: includes/class-wc-settings-tab-tabby.php:216
+msgid "Tabby allowed countries"
+msgstr ""
+
+#: includes/class-wc-settings-tab-tabby.php:221
+msgid "Use <html> tag lang"
+msgstr ""
+
+#: includes/class-wc-settings-tab-tabby.php:224
+msgid "Use documentElement lang attribute for tabby language"
+msgstr ""
+
+#: includes/class-wc-settings-tab-tabby.php:227
+msgid "Hide methods"
+msgstr ""
+
+#: includes/class-wc-settings-tab-tabby.php:230
+msgid "Hide Tabby payment methods on checkout if not available"
+msgstr ""
+
+#: includes/class-wc-settings-tab-tabby.php:233
+msgid "Debug"
+msgstr ""
+
+#: includes/class-wc-settings-tab-tabby.php:236
+msgid "Enable API request/reply logging"
+msgstr ""
+
+#: includes/class-wc-tabby-cron.php:76
+msgid "Tabby unpaid order cancelled - time limit reached."
+msgstr ""
