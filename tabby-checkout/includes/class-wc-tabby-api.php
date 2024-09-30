@@ -10,6 +10,11 @@ class WC_Tabby_Api {
         return true;
     }
 
+    public static function isSecretKeyProduction() {
+        $secret_key = self::get_api_option('secret_key', "");
+        return preg_match("#^sk_[\da-f]{8}\-[\da-f]{4}\-[\da-f]{4}\-[\da-f]{4}\-[\da-f]{12}$#", $secret_key);
+    }
+
     public static function get_api_option($option, $default = null) {
         return get_option('tabby_checkout_' . $option, $default);
     }
@@ -78,9 +83,10 @@ error_reporting($er);
             $msg = "Server returned: " . $response['response']['code'] . '. ';
             if (!empty($body)) {
                 $result = json_decode($body);
-                if (is_object($result) && property_exists($result, 'error')) {
+                if (!property_exists($result, 'error')) {
+                    $result->error = '';
                     $msg .= $result->errorType . ': ' . $result->error;
-                };
+                }
                 static::debug(['response - body - ', (array)$result]);
             }
             //wc_add_notice( __($msg), 'error');
@@ -111,11 +117,15 @@ error_reporting($er);
 
         $storeURL = parse_url(get_site_url());
 
+        $woo_dir = WP_PLUGIN_DIR . '/woocommerce/woocommerce.php';
+        $woo_data = get_plugin_data($woo_dir);
+
         $log = array(
             "status"  => $status,
             "message" => $message,
 
             "service"  => "woo",
+            "sversion" => $woo_data['Version'],
             "hostname" => $storeURL["host"],
 
             "ddsource" => "php",

@@ -3,6 +3,7 @@
  */
 const registerPaymentMethod = window.wc.wcBlocksRegistry.registerPaymentMethod;
 const getPaymentMethodData = window.wc.wcSettings.getPaymentMethodData;
+const __ = window.wp.i18n.__;
 
 const settings = getPaymentMethodData( 'tabby_installments', {} );
 const defaultLabel = 'Pay in 4. No interest, no fees.';
@@ -79,6 +80,10 @@ const tabbyInstallmentsPaymentMethod = {
         return true;
     },
     ariaLabel: title,
+    placeOrderButtonLabel: __(
+        'Proceed to Tabby',
+        'tabby-checkout'
+    ),
     supports: {
         features: settings?.supports ?? []
     }

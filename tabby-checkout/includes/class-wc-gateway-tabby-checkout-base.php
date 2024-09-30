@@ -172,7 +172,8 @@ class WC_Gateway_Tabby_Checkout_Base extends WC_Payment_Gateway {
         ];
         return $res;
     }
-    public function get_order_total() {
+    public function get_order_total($order = null) {
+        if ($order) return (float)$order->get_total();
         return WC()->cart ? parent::get_order_total() : 0;
     }
 
@@ -324,6 +325,10 @@ class WC_Gateway_Tabby_Checkout_Base extends WC_Payment_Gateway {
             return true;
         };
         $config = json_decode(static::getTabbyConfig(), true);
+        // show module on checkout if there is no email/phone entered
+        if (empty($config['buyer']['email']) || empty($config['buyer']['phone'])) {
+            return true;
+        }
         $config['payment']['buyer'] = $this->getFrontBuyerObject();
         $config['payment']['order_history'] = WC_Tabby_AJAX::getOrderHistoryObject(
             $config['payment']['buyer']['email'],
@@ -341,7 +346,7 @@ class WC_Gateway_Tabby_Checkout_Base extends WC_Payment_Gateway {
 
         $is_available = false;
         
-        $sha256 = hash('sha256', json_encode($request));
+        $sha256 = hash('sha256', json_encode($this->get_cached_values($request)));
         $tr_name = 'tabby_api_cache_' . $sha256;
 
         if (($available_products = get_transient($tr_name)) === false) {
@@ -360,6 +365,17 @@ class WC_Gateway_Tabby_Checkout_Base extends WC_Payment_Gateway {
         }
 
         return $is_available;
+    }
+
+    protected function get_cached_values($request) {
+        return [
+            "lang"          => $request["lang"],
+            "merchant_code" => $request["merchant_code"],
+            "amount"        => $request["payment"]["amount"],
+            "currency"      => $request["payment"]["currency"],
+            "email"         => $request["payment"]["buyer"]["email"],
+            "phone"         => $request["payment"]["buyer"]["phone"]
+        ];
     }
 
     public function getFrontBuyerObject() {
@@ -394,7 +410,7 @@ class WC_Gateway_Tabby_Checkout_Base extends WC_Payment_Gateway {
 
     public function getPaymentObject($order) {
         return [
-            "amount"            => $this->formatAmount($this->get_order_total()),
+            "amount"            => $this->formatAmount($this->get_order_total($order)),
             "currency"          => WC_Tabby_Config::getTabbyCurrency(),
             //"buyer_history"   => $this->getBuyerHistoryObject(),
             "description"       => get_bloginfo("name") . ' Order',
@@ -495,7 +511,10 @@ class WC_Gateway_Tabby_Checkout_Base extends WC_Payment_Gateway {
                 );
             } else {
                 wc_add_notice( $redirect_url->get_error_message(), 'error' );
-                return;
+                return [
+                    'result'    => 'failure',
+                    'message'   => 'Sorry Tabby is unable to approve this purchase, please use an alternative payment method for your order.'
+                ];
             }
         } catch (\Exception $e) {
             $this->ddlog("error", "could not process payment", $e);

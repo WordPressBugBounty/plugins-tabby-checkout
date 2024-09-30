@@ -9,6 +9,7 @@ class WC_Tabby {
         WC_Tabby_Promo::init();
         WC_Tabby_Cron::init();
         WC_REST_Tabby_Controller::init();
+        WC_Tabby_Feed_Sharing::init();
 
         static::init_methods();
 
@@ -19,9 +20,7 @@ class WC_Tabby {
     }
     public static function init_methods() {
         add_filter( 'woocommerce_payment_gateways', array(__CLASS__, 'add_checkout_methods'));
-
         add_action( 'woocommerce_blocks_loaded', array(__CLASS__, 'woocommerce_blocks_support'));
-
     }
     public static function woocommerce_blocks_support() {
         if ( class_exists( 'Automattic\WooCommerce\Blocks\Payments\Integrations\AbstractPaymentMethodType' ) ) {
@@ -55,15 +54,22 @@ class WC_Tabby {
     public static function on_activation() {
         wp_schedule_single_event( time() + 60 , 'woocommerce_tabby_cancel_unpaid_orders' );
         WC_Tabby_Webhook::register();
+
+        if (WC_Tabby_Config::getShareFeed()) {
+            WC_Tabby_Feed_Sharing::register();
+        }
     }
 
     public static function on_deactivation() {
         wp_clear_scheduled_hook( 'woocommerce_tabby_cancel_unpaid_orders' );
         WC_Tabby_Webhook::unregister();
+
+        if (WC_Tabby_Config::getShareFeed()) {
+            WC_Tabby_Feed_Sharing::unregister();
+        }
     }
     
     public static function init_textdomain() {
         load_plugin_textdomain( 'tabby-checkout', false, plugin_basename( dirname(__DIR__) ) . '/i18n/languages' );
     }
-
 }

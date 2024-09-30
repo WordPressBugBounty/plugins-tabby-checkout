@@ -39,7 +39,7 @@ class WC_Tabby_Webhook {
         }
     }
     public static function isNotAuthorized($response) {
-        if (is_object($response) && property_exists($response, 'errorType') && $response->errorType == 'not_authorized') return true;
+        if (is_object($response) && property_exists($response, 'errorType') && in_array($response->errorType, ['not_authorized', 'not_found'])) return true;
         return false;
     }
     public static function registerWebhook($code, $url) {

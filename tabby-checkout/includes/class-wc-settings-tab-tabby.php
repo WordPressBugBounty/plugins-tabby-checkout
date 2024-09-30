@@ -25,8 +25,16 @@ class WC_Settings_Tab_Tabby {
     }
 
     public static function tabby_update_settings() {
+        $share_feed_old = get_option('tabby_share_feed', 'yes');
         woocommerce_update_options( static::tabby_checkout_api_settings([], 'tabby_api') );
         WC_Tabby_Webhook::register();
+        $share_feed_new = get_option('tabby_share_feed', 'yes');
+        if ($share_feed_old !== 'yes' && $share_feed_new === 'yes') {
+            WC_Tabby_Feed_Sharing::register();
+        };
+        if ($share_feed_new !== 'yes') {
+            WC_Tabby_Feed_Sharing::unregister();
+        };
     }
 
     public static function sanitize_public_key($value) {
@@ -64,6 +72,12 @@ class WC_Settings_Tab_Tabby {
                 'type' => 'title', 
                 'desc' => __( 'The following options are used to configure Tabby Checkout API', 'tabby-checkout' ), 
                 'id' => 'tabby-checkout'
+            );
+            $settings_tabby[] = array(
+                'name'     => __( 'Share product feed with Tabby', 'tabby-checkout' ),
+                'id'       => 'tabby_share_feed',
+                'type'     => 'checkbox',
+                'default'  => 'yes'
             );
             $settings_tabby[] = array(
                 'name'     => __( 'Plugin mode', 'tabby-checkout' ),

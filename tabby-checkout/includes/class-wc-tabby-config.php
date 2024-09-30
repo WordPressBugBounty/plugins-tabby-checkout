@@ -4,6 +4,15 @@ class WC_Tabby_Config {
     const ALLOWED_CURRENCIES = ['AED','SAR','BHD','KWD', 'QAR'];
     const ALLOWED_COUNTRIES  = [ 'AE', 'SA', 'BH', 'KW',  'QA'];
 
+    public static function getDefaultMerchantCode() {
+        $currency_code = static::getTabbyCurrency();
+
+        if (($index = array_search($currency_code, static::ALLOWED_CURRENCIES)) !== false) {
+            return static::ALLOWED_COUNTRIES[$index];
+        }
+
+        return 'default';
+    }
     public static function isAvailableForCountry($country_code) {
         if (($allowed = static::getConfiguredCountries()) === false) {
             $allowed = static::ALLOWED_COUNTRIES;
@@ -12,6 +21,9 @@ class WC_Tabby_Config {
     }
     public static function getConfiguredCountries() {
         return get_option('tabby_countries', false);
+    }
+    public static function getShareFeed() {
+        return get_option('tabby_share_feed', 'yes') == 'yes';
     }
     public static function isAvailableForCurrency($currency_code = null) {
         if (is_null($currency_code)) {
@@ -35,7 +47,10 @@ class WC_Tabby_Config {
         return true;
     }
     public static function isDisabledForSKU($sku) {
-        $disabled_skus = array_filter(explode("\n", get_option('tabby_checkout_disable_for_sku', '')));
+        $disabled_skus = array_map(
+            function ($item) {return trim($item);},
+            array_filter(explode("\n", get_option('tabby_checkout_disable_for_sku', '')))
+        );
         return in_array($sku, $disabled_skus);
     }
     public static function getPromoMerchantCode() {

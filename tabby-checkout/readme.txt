@@ -1,9 +1,9 @@
 === Tabby Checkout ===
-Contributors: sergeybalitsky
+Contributors: tabbyai
 Tags: tabby, tabby plugin, tabby checkout, bnpl, tabby bnpl
 Requires at least: 5.7
 Tested up to: 6.5
-Stable tag: 4.10.6
+Stable tag: 5.0.9
 Requires PHP: 7.0
 License: GPLv3
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
@@ -27,6 +27,14 @@ customers by offering easy and flexible payments online and in stores. Tabby
 currently operates in Saudi Arabia, UAE, Kuwait, Bahrain and Egypt.
 
 == Changelog ==
+
+= 5.0.9 =
+
+* Minor fixes 
+
+= 5.0.0 =
+
+* New Product Catalogue Feature
 
 = 4.10.6 =
 
@@ -199,6 +207,19 @@ We may share your personal information:
 (e) in the event that we sell or buy any business or assets, in which case we will disclose your personal data to the prospective seller or buyer.
 
 If we share your personal information with our group companies or other third parties, we will take steps to protect your personal information in our contractual agreements with these third parties, and to require that they have appropriate technical and organisational security measures in place, in compliance with applicable data protection laws.
+
+
+== Plugin Update: New Product Catalogue Feature ==
+We’ve introduced an exciting new feature to the Tabby WooCommerce plugin – the **Product Catalogue Feature**, designed to help you list your store’s products seamlessly on the Tabby Shop. Here are the advantages this feature brings to your business:
+
+**Advantages:**
+* **Automated Product Listing:** Easily list your entire WooCommerce store inventory on the Tabby Shop without manual intervention.
+* **Real-Time Stock Updates:** Keep your product listings up-to-date effortlessly, as the plugin automatically syncs inventory availability and reflects out-of-stock items in real time.
+* **Increased Visibility:** Showcase your products to a broader audience by making them visible to all Tabby app users.
+* **Traffic Generation:** Drive interested shoppers directly to your WooCommerce store, increasing clicks and potential sales.
+* **Simplified Setup:** The feature is enabled by default, so there’s nothing you need to do. If needed, you can manage it in the Tabby API settings by simply enabling or disabling the appropriate checkbox.
+
+This feature helps you reach more shoppers and boost your store’s visibility through the Tabby platform.
 
 == Tabby Promo ==
 Customers are not always aware of the different financing options available to them before they reach the checkout. Tabby promo helps your customers learn about the advantages and possibilities of alternative payment methods which has a great impact on the conversion rate and customers' awareness.
