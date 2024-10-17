@@ -3,7 +3,7 @@ Contributors: tabbyai
 Tags: tabby, tabby plugin, tabby checkout, bnpl, tabby bnpl
 Requires at least: 5.7
 Tested up to: 6.5
-Stable tag: 5.0.9
+Stable tag: 5.0.15
 Requires PHP: 7.0
 License: GPLv3
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
@@ -28,7 +28,11 @@ currently operates in Saudi Arabia, UAE, Kuwait, Bahrain and Egypt.
 
 == Changelog ==
 
-= 5.0.9 =
+= 5.0.15 =
+
+* Fix server load issue
+
+= 5.0.10 =
 
 * Minor fixes 
 

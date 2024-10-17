@@ -8,14 +8,21 @@ class WC_Tabby_Feed_Sharing {
     ];
 
     public static function init() {
-        if (!WC_Tabby_Api::isSecretKeyProduction()) return false;
-        add_filter( 'cron_schedules', array(__CLASS__, 'add_every_five_minutes') );
+        if (!WC_Tabby_Api_Feed::canOperate()) return;
+
+        if (!WC_Tabby_Config::getShareFeed()) {
+            if (WC_Tabby_Api_Feed::isRegistered()) {
+                self::unregister();
+            }
+            return;
+        }
+        if (!WC_Tabby_Api_Feed::isRegistered()) {
+            // register feed only
+            add_action( 'shutdown', array( __CLASS__, 'register' ), 15);
+            return;
+        }
         add_action(self::CRON_JOB_NAME, array(__CLASS__, 'cron_service'));
         add_action( 'shutdown', array( __CLASS__, 'shutdown' ), 20);
-        if (!WC_Tabby_Config::getShareFeed()) return;
-        if (!WC_Tabby_Api_Feed::isRegistered()) {
-            add_action( 'shutdown', array( __CLASS__, 'register' ), 15);
-        }
         add_action( 'woocommerce_new_product', array(WC_Tabby_Feed_Sharing::class, 'update_product'), 10, 1 );
         add_action( 'woocommerce_update_product', array(WC_Tabby_Feed_Sharing::class, 'update_product'), 10, 1 );
         add_action( 'woocommerce_before_delete_product', array(WC_Tabby_Feed_Sharing::class, 'delete_product'), 10, 1 );
@@ -77,7 +84,8 @@ class WC_Tabby_Feed_Sharing {
             'return' => 'ids'
         ];
         $products = wc_get_products($args);
-        self::$updates['updated'] = $products;
+
+        self::saveFailedToDatabase('update', $products);
     }
     public static function update_products($ids) {
         $ids = array_unique($ids);
@@ -128,15 +136,17 @@ class WC_Tabby_Feed_Sharing {
         return true;
     }
     public static function register() {
-        if (!WC_Tabby_Config::getShareFeed()) return;
+        if (!WC_Tabby_Config::getShareFeed()) return false;
 
         $api = new WC_Tabby_Api_Feed();
 
-        $api->register();
+        if ($api->register()) {
+            self::share_product_feed();
+            self::registerCronJob();
+            return true;
+        }
 
-        self::share_product_feed();
-
-        self::registerCronJob();
+        return false;
     }
     public static function unregister() {
         $api = new WC_Tabby_Api_Feed();

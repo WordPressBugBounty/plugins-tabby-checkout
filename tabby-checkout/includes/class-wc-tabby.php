@@ -9,7 +9,6 @@ class WC_Tabby {
         WC_Tabby_Promo::init();
         WC_Tabby_Cron::init();
         WC_REST_Tabby_Controller::init();
-        WC_Tabby_Feed_Sharing::init();
 
         static::init_methods();
 
@@ -17,6 +16,14 @@ class WC_Tabby {
 
         register_activation_hook  ( 'tabby-checkout/tabby-checkout.php', array( __CLASS__, 'on_activation'  ));
         register_deactivation_hook( 'tabby-checkout/tabby-checkout.php', array( __CLASS__, 'on_deactivation'));
+
+        // cron intervsal to use with Feed Sharing
+        add_filter( 'cron_schedules', array('WC_Tabby_Feed_Sharing', 'add_every_five_minutes') );
+
+        // must be inited after other plugins to use woocommerce logic in init
+        add_action('plugins_loaded', function () {
+            WC_Tabby_Feed_Sharing::init();
+        });
     }
     public static function init_methods() {
         add_filter( 'woocommerce_payment_gateways', array(__CLASS__, 'add_checkout_methods'));

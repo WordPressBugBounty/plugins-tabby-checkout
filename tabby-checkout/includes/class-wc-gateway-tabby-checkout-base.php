@@ -269,7 +269,6 @@ class WC_Gateway_Tabby_Checkout_Base extends WC_Payment_Gateway {
     public function getBuyerObject($order) {
         $billing = $order->get_address();
         return array(
-            'dob'   => null,
             'email' => $billing['email'],
             'name'  => $billing['first_name'] . ' ' . $billing['last_name'],
             'phone' => str_replace("+", "", $billing['phone'])
@@ -401,7 +400,6 @@ class WC_Gateway_Tabby_Checkout_Base extends WC_Payment_Gateway {
                     : '');
         }
         return array(
-            'dob'   => null,
             'email' => $email,
             'name'  => $fname . ' ' . $lname,
             'phone' => str_replace("+", "", $phone)
@@ -415,6 +413,10 @@ class WC_Gateway_Tabby_Checkout_Base extends WC_Payment_Gateway {
             //"buyer_history"   => $this->getBuyerHistoryObject(),
             "description"       => get_bloginfo("name") . ' Order',
             "order"             => $this->getOrderObject($order),
+            "meta"              => [
+                "tabby_plugin_platform" => 'woocommerce',
+                "tabby_plugin_version"  => MODULE_TABBY_CHECKOUT_VERSION
+            ],
             //"shipping_address"    => $this-> getShippingAddressObject()
         ];
     }

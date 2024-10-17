@@ -5,6 +5,16 @@ class WC_Tabby_Api_Feed {
     const TABBY_CHECKOUT_FEED_TOKEN_OPTION = 'tabby_checkout_feed_token';
     const TABBY_CHECKOUT_FEED_CRED_OPTION = 'tabby_checkout_feed_cred';
     const TABBY_CHECKOUT_FEED_REG_ATTEMPT = 'tabby_checkout_feed_reg_attempt';
+    const TABBY_CHECKOUT_FEED_CODES = ['AE', 'SA', 'KW'];
+
+    public static function canOperate() {
+        // only for production keys
+        if (!WC_Tabby_Api::isSecretKeyProduction()) return false;
+        // only for 3 countries
+        if (!in_array(self::getMerchantCode(), self::TABBY_CHECKOUT_FEED_CODES)) return false;
+
+        return true;
+    }
 
     public static function isRegistered() {
         return !is_null(get_option(self::TABBY_CHECKOUT_FEED_TOKEN_OPTION, null));
@@ -23,9 +33,6 @@ class WC_Tabby_Api_Feed {
         return true;
     }
     public function register() {
-        // bypass registration for unsupported currencies
-        if ($this->getMerchantCode() == 'default') return false;
-
         // check if there is previous registration attempt
         $reg_attempt_name = self::TABBY_CHECKOUT_FEED_REG_ATTEMPT;
         if (time() < (int)get_option($reg_attempt_name, 0)) {
@@ -88,7 +95,7 @@ class WC_Tabby_Api_Feed {
         $storeURL = parse_url(get_site_url());
         return $storeURL['host'];
     }
-    private function getMerchantCode() {
+    private static function getMerchantCode() {
         return WC_Tabby_Config::getDefaultMerchantCode();
     }
     public function request($endpoint, $method = 'GET', $data = []) {

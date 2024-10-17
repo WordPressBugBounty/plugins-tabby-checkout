@@ -315,7 +315,6 @@ class TabbyRenderer {
     getBuyerObject() {
         if (this.isPayForOrderPage()) return this.config.buyer;
         return {
-            dob: null,
             email: this.getFieldEmail().val().toString(),
             name: this.getFieldFirstName().val() + (this.getFieldLastName().length ? ' ' + this.getFieldLastName().val() : ''),
             phone: this.getFieldPhone().val().toString()
