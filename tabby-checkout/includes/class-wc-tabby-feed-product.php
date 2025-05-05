@@ -31,7 +31,7 @@ class WC_Tabby_Feed_Product {
         $tabby_lang = self::TABBY_LANGUAGES[array_search($lang, self::LANGUAGES)];
         $data[$tabby_lang] = [
             'title'         => $product->get_name(),
-            'description'   => $product->get_description(),
+            'description'   => $product->get_description() ?: $product->get_short_description(),
             'categories'    => self::getTabbyCategoryPath($product),
             'attributes'    => self::getTabbyAttributes($variation),
             'link'          => $product->get_permalink(),

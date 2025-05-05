@@ -55,8 +55,9 @@ class WC_Tabby_Feed_Sharing {
     }
     public static function transition_post_status($new_status, $old_status, $post) {
         if (in_array( $post->post_type, array( 'product', 'product_variation' ), true )) {
-            $product = wc_get_product($post->ID);
-            self::$updates['availability'][(string)$post->ID] = WC_Tabby_Feed_Product::getTabbyisAvailable($product);
+            if ($product = wc_get_product($post->ID)) {
+                self::$updates['availability'][(string)$post->ID] = WC_Tabby_Feed_Product::getTabbyisAvailable($product);
+            }
         }
     }
     public static function delete_product($post_id) {

@@ -3,7 +3,7 @@ Contributors: tabbyai
 Tags: tabby, tabby plugin, tabby checkout, bnpl, tabby bnpl
 Requires at least: 5.7
 Tested up to: 6.8
-Stable tag: 5.1.1
+Stable tag: 5.5.3
 Requires PHP: 7.0
 License: GPLv3
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
@@ -28,9 +28,21 @@ currently operates in Saudi Arabia, UAE, Kuwait, Bahrain and Egypt.
 
 == Changelog ==
 
-= 5.1.1 =
+= 5.5.0 =
 
-* Wordpress 6.8 compatibility
+* WP REST API support added
+
+= 5.4.0 =
+
+* Prescoring session improvements
+
+= 5.3.0 =
+
+* Disable debug log by default
+
+= 5.2.0 =
+
+* Order status changed to failed for rejected payments
 
 = 5.1.0 =
 

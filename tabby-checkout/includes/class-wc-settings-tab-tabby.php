@@ -281,7 +281,7 @@ Set up the limit between 0 - 50000 to show Standard promotion snippets for the a
                 'type'     => 'checkbox',
                 'class'    => 'promo-hidden',
                 'desc'     => __( 'Enable API request/reply logging', 'tabby-checkout' ),
-                'default'  => 'yes'
+                'default'  => 'no'
             );
             
             $settings_tabby[] = array( 'type' => 'sectionend', 'id' => 'tabby_api' );

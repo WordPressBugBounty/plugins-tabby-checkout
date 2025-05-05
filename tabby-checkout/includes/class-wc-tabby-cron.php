@@ -35,8 +35,10 @@ class WC_Tabby_Cron {
                     $order->payment_complete($payment_id);
                     $canDelete = false;
                 }
+
+                // delete orders with expired payment assigned
                 if (!$gateway->is_payment_expired($order, $payment_id)) {
-                    $canDelete = false;
+                    $canDelete = true;
                 }
             } catch (\Exception $e) {
                 $canDelete = false;

@@ -103,6 +103,12 @@ error_reporting($er);
             $fp = fopen(__DIR__ . '/../log/tabby.log', "a+");
             fputs($fp, date("[Y-m-d H:i:s] ") . print_r($data, true));
             fclose($fp);
+        } else {
+            //if log file exists, delete it
+            if (file_exists(__DIR__ . '/../log/tabby.log')) {
+                unlink(__DIR__ . '/../log/tabby.log');
+                rmdir(__DIR__ . '/../log/');
+            }
         };
     }
 

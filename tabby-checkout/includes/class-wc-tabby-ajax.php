@@ -2,11 +2,13 @@
 class WC_Tabby_AJAX {
     public static function init() {
         add_action( 'wc_ajax_get_order_history',   array( __CLASS__, 'get_order_history' ) );
+        add_action( 'wc_ajax_get_prescoring_data', array( __CLASS__, 'get_prescoring_data' ) );
         add_filter( 'query_vars',                  array( __CLASS__, 'query_vars'        ) );
         add_filter( 'woocommerce_get_script_data', array( __CLASS__, 'get_script_data'   ) , 10, 2);
     }
     public static function get_script_data($params, $handle) {
         if ($handle == 'wc-checkout') {
+            $params['get_prescoring_data_nonce'] = wp_create_nonce( 'get_prescoring_data' );
             $params['get_order_history_nonce'] = wp_create_nonce( 'get_order_history' );
         }
         return $params;
@@ -14,7 +16,48 @@ class WC_Tabby_AJAX {
     public static function query_vars( $vars ) {
         $vars[] = 'email';
         $vars[] = 'phone';
+        $vars[] = 'buyer';
         return $vars;
+    }
+    public static function get_prescoring_data() {
+
+        check_ajax_referer( 'get_prescoring_data', 'security' );
+
+        $gateway = new WC_Gateway_Tabby_Checkout_Base();
+
+        $config = json_decode($gateway->getTabbyConfig(), true);
+
+        $request = [
+            'lang'          => $config['locale'],
+            'merchant_code' => $config['merchantCode'],
+            'merchant_urls' => $config['merchantUrls'],
+            'payment'       => $config['payment']
+        ];
+
+        $request['payment']['buyer'] = $config['buyer'];
+        $buyer = get_query_var('buyer', false);
+        if (is_array($buyer)) {
+            if (array_key_exists('email', $buyer)) {
+                $request['payment']['buyer']['email'] = $buyer['email'];
+            }
+            if (array_key_exists('phone', $buyer)) {
+                $request['payment']['buyer']['phone'] = $buyer['phone'];
+            }
+        }
+        $request['payment']['buyer_history'] = $config['buyer_history'];
+        $request['payment']['shipping_address'] = $config['shipping_address'];
+
+        $request['payment']['order_history'] = self::getOrderHistoryObject(
+            $request['payment']['buyer']['email'],
+            $request['payment']['buyer']['phone']
+        );
+
+        $available_products = $gateway->get_cached_availability_request($request);
+
+        wp_send_json( [
+            "status"    => empty($available_products) ? 'error' : 'created',
+            "availableProducts" => $available_products 
+        ] );
     }
     public static function get_order_history() {
 

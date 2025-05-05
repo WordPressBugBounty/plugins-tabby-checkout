@@ -11,10 +11,8 @@ jQuery(document).ready(function () {
 });
 class TabbyRenderer {
     constructor () {
-        this.payment = null;
-        this.email = null;
-        this.phone = null;
-        this.lastMethod = null;
+        this.buyer = null;
+        this.buyerJSON = null;
         this.methods = {
             creditCardInstallments: 'credit_card_installments',
             installments: 'installments',
@@ -23,7 +21,6 @@ class TabbyRenderer {
         this.products = [];
         this.product = null;
         this.formFilled = false;
-        this.formSubmitted = false;
         this.actualSession = 0;
         // update payment modules on phone/email change
         jQuery( 'form' ).on( 
@@ -31,16 +28,7 @@ class TabbyRenderer {
             '#billing_email, #billing_phone', 
             function () {jQuery( document.body ).trigger('update_checkout')}
         );
-        // pay_for_order page
-        if (this.isPayForOrderPage() && jQuery('#order_review').length) {
-            jQuery('#order_review').submit(function (e) {
-                tabbyRenderer.updatePaymentIdField();
-            });
-        }
         jQuery( document.body ).bind( 'payment_method_selected', this.updatePlaceOrderButton );
-        for (var i in this.methods) {
-            jQuery( 'form' ).bind( 'checkout_place_order_tabby_' + this.methods[i], this.updatePaymentIdField.bind(this));
-        }
         this.style = document.createElement('style');
         this.style.type = 'text/css';
         this.adjustStyleSheet();
@@ -126,18 +114,7 @@ class TabbyRenderer {
         this.config = window.tabbyConfig;
         this.adjustStyleSheet();
         if (!this.canUpdate()) return;
-        var payment = this.buildPayment();
-        if (tabbyRenderer.config.debug) console.log(payment);
-        if ((JSON.stringify(payment) == this.paymentJSON) && (this.oldMerchantCode == this.config.merchantCode)) {
-            // set form field values (because payment methods can be updated)
-            this.setPaymentIdForm();
-            return;
-        }
-        this.payment = payment;
-        this.paymentJSON = JSON.stringify(payment);
-        this.oldMerchantCode = this.config.merchantCode;
         this.create();
-        tabbyRenderer.relaunchTabby = false;
     }
     ddLog(msg, data) {
         if (typeof ddLog !== 'undefined') {
@@ -151,97 +128,17 @@ class TabbyRenderer {
             if (tabbyRenderer.config.debug) console.log(error);
         }
     }
-    setPaymentId(payment_id) {
-        this.payment_id = payment_id;
-        this.setPaymentIdForm();
-    }
-    setPaymentIdForm() {
-        jQuery("input[name^=tabby_]").filter("[name$=payment_id]").val(this.payment_id);
-        // save webUrl for every product
-        for (var i in this.methods) {
-            if (this.products.hasOwnProperty(i)) {
-                jQuery("input[name=tabby_"+this.methods[i]+"_web_url]").val(tabbyRenderer.products[i][0].webUrl);
-            } else {
-                jQuery("input[name=tabby_"+this.methods[i]+"_web_url]").val('');
-            }
-        }
-    }
-    updatePaymentIdField() {
-        if (this.payment_id) {
-            this.setPaymentIdForm();
-            this.formSubmitted = true;
-            return true;
-        }
-        return false;
-    }
     create() {
         tabbyRenderer.formFilled = false;
-        this.disableButton();
-        this.setPaymentId(null);
-        // create session configuration
-        var tabbyConfig = {
-            apiKey: this.config.apiKey
-        };
-        tabbyConfig.payment = this.payment;
-        tabbyConfig.merchantCode = this.config.merchantCode;
-        tabbyConfig.lang = this.getLocale();
-        tabbyConfig.merchantUrls = this.config.merchantUrls;
-        // clean available products
-        tabbyRenderer.products = [];
-        if (tabbyRenderer.config.debug) console.log(tabbyConfig);
-        var sessNum = ++this.actualSession;
-        window.TabbyCmsPlugins.createSession(tabbyConfig).then( (sess) => {
-            tabbyRenderer.formSubmitted = false;
-            tabbyRenderer.formFilled = true;
-            // do nothing
-            if (tabbyRenderer.actualSession > sessNum) {
-                if (tabbyRenderer.config.debug) console.log("ignore old response");
-                return;
-            }
-            // create session error
-            if (!sess.hasOwnProperty('status') || sess.status != 'created') {
-                if (tabbyRenderer.config.debug) console.log('create session error');
-
-                tabbyRenderer.disableButton();
-                return;
-            }
-            // update currently available products
-            tabbyRenderer.products = sess.availableProducts;
-            // update payment id field
-            tabbyRenderer.setPaymentId(sess.payment.id);
-            tabbyRenderer.ddLog('payment created', {payment:{id:sess.payment.id}});
-
-            tabbyRenderer.enableButton();
-
-            if (tabbyRenderer.relaunchTabby) {
-                tabbyRenderer.relaunchTabby = false;
-                tabbyRenderer.launch();
-            }
-        });
-    }
-    launch() {
-
-        if (!tabbyRenderer.formSubmitted) {
-            setTimeout(function () {
-                tabbyRenderer.unblockForm();
-                jQuery("#place_order").trigger('click');
-            }, 300);
-            return false;
+        var buyer = this.getBuyerObject();
+        if (this.buyerJSON != JSON.stringify(buyer)) {
+            this.buyerJSON = JSON.stringify(buyer);
+            this.buyer = buyer;
+            this.disableButton();
+            // clean available products
+            tabbyRenderer.products = [];
+            this.getPrescoringData();
         }
-        var product = tabbyRenderer.product;
-        if (tabbyRenderer.config.debug) console.log('launch with product', tabbyRenderer.product);
-
-        if (tabbyRenderer.relaunchTabby) {
-            tabbyRenderer.create();
-        } else {
-            // remove form blocking
-            tabbyRenderer.unblockForm();
-            jQuery( window ).unbind('beforeunload');
-
-            document.location.href = tabbyRenderer.products[product][0].webUrl;
-        }
-
-        return false;
     }
     adjustStyleSheet() {
         if (this.config && this.config.hideMethods) {
@@ -270,47 +167,45 @@ class TabbyRenderer {
             if (!this.getFieldEmail().val() || !this.getFieldPhone().val()) return false;
         };
         if (!window.tabbyConfig) return false;
-        // reload order history if needed
-        if (!this.loadOrderHistory()) return false;
         return true;
     }
-    loadOrderHistory() {
-        if (this.getFieldEmail().val() == this.email && this.getFieldPhone().val() == this.phone) {
-            return true;
-        }
+    getPrescoringData() {
         if ( typeof wc_checkout_params === 'undefined' ) {
             return false;
         }
 
         var data = {
-            email: this.getFieldEmail().val(),
-            phone: this.getFieldPhone().val(),
-            security: wc_checkout_params.get_order_history_nonce
+            buyer: this.buyer,
+            security: wc_checkout_params.get_prescoring_data_nonce
         };
+
+        var sessNum = ++this.actualSession;
 
         tabbyRenderer.xhr = jQuery.ajax({
             type:       'POST',
-            url:        wc_checkout_params.wc_ajax_url.toString().replace( '%%endpoint%%', 'get_order_history' ),
+            url:        wc_checkout_params.wc_ajax_url.toString().replace( '%%endpoint%%', 'get_prescoring_data' ),
             data:       data,
             success:    function( data ) {
-                tabbyRenderer.order_history = data.order_history;
-                tabbyRenderer.email = data.email;
-                tabbyRenderer.phone = data.phone;
-                tabbyRenderer.update();
+                tabbyRenderer.formFilled = true;
+                // do nothing
+                if (tabbyRenderer.actualSession > sessNum) {
+                    if (tabbyRenderer.config.debug) console.log("ignore old response");
+                    return;
+                }
+                // create session error
+                if (!data.hasOwnProperty('status') || data.status != 'created') {
+                    if (tabbyRenderer.config.debug) console.log('create session error', data);
+    
+                    tabbyRenderer.disableButton();
+                    return;
+                }
+                // update currently available products
+                tabbyRenderer.products = data.availableProducts;
+    
+                tabbyRenderer.enableButton();
             }
         });
 
-        return false;
-    }
-    buildPayment() {
-        var payment = this.config.payment;
-        payment.buyer = this.getBuyerObject();
-        if (this.config.buyer_history) {
-            payment.buyer_history = this.config.buyer_history;
-        }
-        payment.shipping_address = this.getShippingAddress();
-        payment.order_history = this.order_history;
-        return payment;
     }
     getBuyerObject() {
         if (this.isPayForOrderPage()) return this.config.buyer;
@@ -340,10 +235,5 @@ class TabbyRenderer {
     getAddressCity(prefix) {
         const city = jQuery('#' + prefix + '_city');
         return city ? city.val() : null;
-    }
-    placeTabbyOrder() {
-        // assign payment id to related input
-        this.setPaymentIdForm();
-        jQuery('#place_order').trigger('click');
     }
 }
