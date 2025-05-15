@@ -34,12 +34,20 @@ class WC_Tabby {
         add_action('woocommerce_rest_insert_shop_order_object', [__CLASS__, 'woocommerce_rest_insert_shop_order_object'], 10, 3);
         // store api
         add_action( 'woocommerce_rest_checkout_process_payment_with_context', array( __CLASS__, 'rest_checkout_process_payment_with_context' ), 10, 2 );
-        //add_action('woocommerce_rest_pre_insert_shop_order_object', [__CLASS__, 'woocommerce_rest_insert_shop_order'], 10, 3);
-        // check transaction id before payment complete and generate exception if it is not authorized
-        //add_action( 'woocommerce_pre_payment_complete' , array( 'WC_Gateway_Tabby_Checkout_Base', 'pre_payment_complete' ), 10, 2);
+        // clean checkout order tabby fields
+        // from checkout
+        add_action('woocommerce_checkout_order_processed', array(__CLASS__, 'woocommerce_checkout_order_processed'), 10, 3);
+        // store checkout api
+        add_action('woocommerce_store_api_checkout_order_processed', array(__CLASS__, 'woocommerce_store_api_checkout_order_processed'));
+        // from pay for order form
+        add_action('woocommerce_before_pay_action', array(__CLASS__, 'woocommerce_store_api_checkout_order_processed'));
 
-
-
+    }
+    public static function woocommerce_checkout_order_processed($order_id, $post_data, &$order) {
+        static::woocommerce_store_api_checkout_order_processed($order);
+    }
+    public static function woocommerce_store_api_checkout_order_processed(&$order) {
+        WC_Gateway_Tabby_Checkout_Base::clean_order_transaction_id($order);
     }
     public static function rest_checkout_process_payment_with_context( PaymentContext $context, PaymentResult &$result ) {
 

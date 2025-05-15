@@ -23,7 +23,7 @@ class WC_Tabby_Cron {
     
         if ($gateway instanceof WC_Gateway_Tabby_Checkout_Base) {
             try {
-                $payment_id = $gateway->get_tabby_payment_id($order->get_id());
+                $payment_id = $gateway->get_tabby_payment_id($order);
                 WC_Tabby_Api::ddlog("info", "Try to authorize order by " . $source, null, [
                     'payment.id'    => $payment_id,
                     'order.reference_id'      => woocommerce_tabby_get_order_reference_id($order)

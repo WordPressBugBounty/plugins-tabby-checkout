@@ -1,4 +1,7 @@
 <?php
+
+use Automattic\WooCommerce\Caches\OrderCache;
+
 class WC_Gateway_Tabby_Checkout_Base extends WC_Payment_Gateway {
     const METHOD_CODE = 'tabby_base';
     const TABBY_METHOD_CODE = 'base';
@@ -44,6 +47,14 @@ class WC_Gateway_Tabby_Checkout_Base extends WC_Payment_Gateway {
             'refunds',
         );
 
+    }
+
+    public static function clean_order_transaction_id(&$order) {
+        if ($order->get_transaction_id() === $order->get_meta(static::TABBY_PAYMENT_FIELD, true)) {
+            $order->set_transaction_id('');
+            $order->delete_meta_data(static::TABBY_PAYMENT_FIELD);
+            $order->save();
+        }
     }
 
     /**
@@ -235,6 +246,10 @@ class WC_Gateway_Tabby_Checkout_Base extends WC_Payment_Gateway {
         // buyer and shipping address for pay_for_order functionality
         if (is_checkout_pay_page()) {
             $order_id = $wp->query_vars['order-pay'];
+            if (empty($order_id)) {
+                $order_key = $wp->query_vars['key'];
+                $order_id = wc_get_order_id_by_order_key( $order_key );
+            }
             $order = wc_get_order($order_id);
             $customer = new \WC_Customer($order->get_customer_id());
             $config['buyer'] = $this->getBuyerObject($order);
@@ -519,7 +534,6 @@ class WC_Gateway_Tabby_Checkout_Base extends WC_Payment_Gateway {
         return $this->request($payment_id, 'PUT', $request);
     }
     protected function getTabbyRedirectUrl($order) {
-        //return sanitize_url($_POST[$this->id . '_web_url']);
         // create payment object
         $config = json_decode(static::getTabbyConfig($order), true);
         $request = [
@@ -552,15 +566,21 @@ class WC_Gateway_Tabby_Checkout_Base extends WC_Payment_Gateway {
      * Update order payment ID for internal use and from api
      */
     public function update_order_payment_id($order, $payment_id) {
-        if ($this->get_tabby_payment_id($order->get_id()) != $payment_id) {
+        if ($this->get_tabby_payment_id($order) != $payment_id) {
             /* translators: %s is replaced with Tabby payment ID */
             $order->add_order_note( sprintf( __( 'Payment assigned. ID: %s', 'tabby-checkout' ), $payment_id ) );
-            update_post_meta($order->get_id(), static::TABBY_PAYMENT_FIELD, $payment_id);
             // set woo transaction id
             $order->set_transaction_id($payment_id);
+            // set internal transaction id
+            $order->update_meta_data(static::TABBY_PAYMENT_FIELD, $payment_id);
             // update status to pending when payment id changed
             $order->update_status( 'pending' );
             $order->save();
+            // remove order from cache
+            if (class_exists('OrderCache')) {
+                $order_cache = wc_get_container()->get( OrderCache::class );
+                $order_cache->remove($order->get_id());
+            }
         }
     }
 
@@ -576,28 +596,19 @@ class WC_Gateway_Tabby_Checkout_Base extends WC_Payment_Gateway {
     }
 
     public function can_refund_order( $order ) {
-        return $order && $this->get_tabby_payment_id($order->get_id()) && !$this->needs_setup() && $this->get_order_capture_id($order->get_id());
+        return $order && $this->get_tabby_payment_id($order) && !$this->needs_setup() && $this->get_order_capture_id($order);
     }
 
-    public function get_order_capture_id($order_id) {
-        return get_post_meta($order_id, '_capture_id', true);
+    public function get_order_capture_id($order) {
+        return $order->get_meta('_capture_id', true);
     }
 
-    public function set_order_capture_id($order_id, $capture_id) {
-        return update_post_meta($order_id, '_capture_id', $capture_id);
+    public function set_order_capture_id($order, $capture_id) {
+        $order->update_meta_data('_capture_id', $capture_id);
+        $order->save();
     }
 
-    public static function pre_payment_complete($order_id, $transaction_id) {
-        $order = wc_get_order($order_id);
-
-        $gateway = wc_get_payment_gateway_by_order($order);
-        if (!($gateway instanceof WC_Gateway_Tabby_Checkout_Base)) return;
-
-        if (!$gateway->authorize($order, $transaction_id)) {
-            throw new \Exception("Payment not authorized by Tabby!");
-        }
-    }
-    public function authorize($order, $payment_id, $silent = false) {
+    public function authorize($order, $payment_id) {
         try {
           $logData = array(
               "payment.id" => $payment_id,
@@ -605,11 +616,8 @@ class WC_Gateway_Tabby_Checkout_Base extends WC_Payment_Gateway {
           );
           $this->ddlog("info", "authorize payment", null, $logData);
 
-          if ($this->get_tabby_payment_id($order->get_id()) != $payment_id) {
-            /* translators: %s is replaced with Tabby payment ID */
-            $order->add_order_note( sprintf( __( 'Payment assigned. ID: %s', 'tabby-checkout' ), $payment_id ) );
-            update_post_meta($order->get_id(), static::TABBY_PAYMENT_FIELD, $payment_id);
-          }
+          // TODO: Do we really need assign transaction id on every authorize 
+          $this->update_order_payment_id($order, $payment_id);
 
           // cache payment to avoid duplicate api queries
           if (!array_key_exists($payment_id, self::$payments)) {
@@ -634,44 +642,37 @@ class WC_Gateway_Tabby_Checkout_Base extends WC_Payment_Gateway {
               }
 
               if ($res->status == 'CREATED') {
-                  if ($this->get_tabby_payment_id($order->get_id()) != $payment_id) {
+                  if ($this->get_tabby_payment_id($order) != $payment_id) {
                     /* translators: %s is replaced with Tabby payment ID */
-                    if (!$silent) {
-                        $order->add_order_note( sprintf( __( 'Payment created. ID: %s', 'tabby-checkout' ), $payment_id ) );
-                    }
-                    update_post_meta($order->get_id(), static::TABBY_PAYMENT_FIELD, $payment_id);
+                    $order->add_order_note( sprintf( __( 'Payment created. ID: %s', 'tabby-checkout' ), $payment_id ) );
                   }
               } elseif ($res->status == 'REJECTED') {
                   /* translators: %s is replaced with Tabby payment ID  */
-                  if (!$silent) {
-                    $order->set_status( 'failed', sprintf( __( 'Payment %s is REJECTED', 'tabby-checkout' ), $payment_id ) );
-                    $order->save();
-                  }
+                  $order->set_status( 'failed', sprintf( __( 'Payment %s is REJECTED', 'tabby-checkout' ), $payment_id ) );
+                  $order->save();
                   return false;
               } elseif ($res->status == 'EXPIRED') {
                   /* translators: %s is replaced with Tabby payment ID  */
-                  if (!$silent) {
-                    $order->set_status( 'cancelled', sprintf( __( 'Payment %s is EXPIRED', 'tabby-checkout' ), $payment_id ) );
-                    $order->save();
-                  }
+                  $order->set_status( 'cancelled', sprintf( __( 'Payment %s is EXPIRED', 'tabby-checkout' ), $payment_id ) );
+                  $order->save();
                   return false;
               } elseif ($order->get_total() == $res->amount && $order->get_currency() == $res->currency) {
-                  update_post_meta($order->get_id(), static::TABBY_STATUS_FIELD, static::STATUS_AUTH);
-                  update_post_meta($order->get_id(), static::TABBY_PAYMENT_FIELD, $payment_id);
+                  if ($order->get_meta(static::TABBY_STATUS_FIELD, true) == '') {
+                    $order->update_meta_data(static::TABBY_STATUS_FIELD, static::STATUS_AUTH);
 
-                  /* translators: %s is replaced with Tabby payment ID */
-                  if (!$silent) {
+                    /* translators: %s is replaced with Tabby payment ID */
                     $order->add_order_note( sprintf( __( 'Payment authorized. ID: %s', 'tabby-checkout' ), $payment_id ) );
                   }
 
                   return true;
               } else {
                   /* translators: %1$s is replaced with Tabby payment ID, %2$s is replaced with payment currency */
-                  if (!$silent) {
-                    $order->set_status( 'failed', sprintf( __( 'Payment failed. ID: %1$s. Total missmatch. Transaction amount: %2$s', 'tabby-checkout' ), $payment_id, $res->amount . $res->currency ) );
+                  $order->set_status( 'failed', sprintf(
+                    __( 'Payment failed. ID: %1$s. Total missmatch. Transaction amount: %2$s', 'tabby-checkout' ),
+                    $payment_id, $res->amount . $res->currency )
+                  );
 
-                    $order->save();
-                  }
+                  $order->save();
 
                   return false;
               }
@@ -699,8 +700,8 @@ class WC_Gateway_Tabby_Checkout_Base extends WC_Payment_Gateway {
         return false;
     }
 
-    public function get_tabby_payment_id($order_id) {
-        return get_post_meta($order_id, static::TABBY_PAYMENT_FIELD, true);
+    public function get_tabby_payment_id($order) {
+        return $order->get_transaction_id() ?: $order->get_meta(static::TABBY_PAYMENT_FIELD, true);
     }
 
     public function capture_payment($order_id ) {
@@ -711,7 +712,7 @@ class WC_Gateway_Tabby_Checkout_Base extends WC_Payment_Gateway {
 
           if (!($gateway instanceof WC_Gateway_Tabby_Checkout_Base)) return;
 
-          $payment_id = $this->get_tabby_payment_id($order->get_id());
+          $payment_id = $this->get_tabby_payment_id($order);
 
           if (!$payment_id) return;
 
@@ -720,7 +721,7 @@ class WC_Gateway_Tabby_Checkout_Base extends WC_Payment_Gateway {
               "order.reference_id" => woocommerce_tabby_get_order_reference_id($order)
           );
 
-          if ($this->can_capture($order_id)) {
+          if ($this->can_capture($order)) {
 
               $this->ddlog("info", "capture payment", null, $logData);
 
@@ -750,9 +751,9 @@ class WC_Gateway_Tabby_Checkout_Base extends WC_Payment_Gateway {
               if (property_exists($result, 'captures') && is_array($result->captures)) {
                 $txn = array_pop($result->captures);
 
-                $this->set_order_capture_id($order_id, $txn->id);
+                $this->set_order_capture_id($order, $txn->id);
 
-                update_post_meta($order->get_id(), static::TABBY_STATUS_FIELD, static::STATUS_CAPTURED);
+                $order->update_meta_data(static::TABBY_STATUS_FIELD, static::STATUS_CAPTURED);
                 /* translators: %s is replaced with Tabby capture ID */
                 $order->add_order_note( sprintf( __( 'Payment captured. ID: %s', 'tabby-checkout' ), $txn->id ) );
               } else {
@@ -767,10 +768,10 @@ class WC_Gateway_Tabby_Checkout_Base extends WC_Payment_Gateway {
     public function cancel_payment($order_id) {
         try {
           $order = wc_get_order($order_id );
-          if ($this->can_cancel($order_id)) {
+          if ($this->can_cancel($order)) {
               $this->cancel($order);
           } else {
-              if (get_post_meta($order->get_id(), static::TABBY_STATUS_FIELD, true) == static::STATUS_CAPTURED) {
+              if ($this->is_captured($order)) {
                   $logData = array(
                       "order.reference_id" => woocommerce_tabby_get_order_reference_id($order)
                   );
@@ -783,13 +784,21 @@ class WC_Gateway_Tabby_Checkout_Base extends WC_Payment_Gateway {
         }
     }
 
-    public function can_cancel($order_id) {
-        return get_post_meta($order_id, static::TABBY_STATUS_FIELD, true) == static::STATUS_AUTH;
+    public function is_captured($order) {
+        return $order->get_meta(static::TABBY_STATUS_FIELD, true) == static::STATUS_CAPTURED;
+    }
+
+    public function is_closed($order) {
+        return $order->get_meta(static::TABBY_STATUS_FIELD, true) == static::STATUS_CLOSED;
+    }
+
+    public function can_cancel($order) {
+        return $order->get_meta(static::TABBY_STATUS_FIELD, true) == static::STATUS_AUTH;
     }
 
     public function cancel($order) {
-        if (get_post_meta($order->get_id(), static::TABBY_STATUS_FIELD, true) !== static::STATUS_CLOSED) {
-            $payment_id = $this->get_tabby_payment_id($order->get_id());
+        if (!$this->is_closed($order)) {
+            $payment_id = $this->get_tabby_payment_id($order);
 
             $logData = array(
                 "payment.id" => $payment_id,
@@ -798,33 +807,32 @@ class WC_Gateway_Tabby_Checkout_Base extends WC_Payment_Gateway {
             $this->ddlog("info", "cancel payment", null, $logData);
 
             $this->request($payment_id . '/close', 'POST');
-            update_post_meta($order->get_id(), static::TABBY_STATUS_FIELD, static::STATUS_CLOSED);
+            $order->update_meta_data(static::TABBY_STATUS_FIELD, static::STATUS_CLOSED);
             $order->add_order_note(__( 'Tabby payment closed', 'tabby-checkout' ));
+            $order->save();
         }
     }
 
-    public function can_auth($order_id) {
-        return (!get_post_meta($order_id, static::TABBY_STATUS_FIELD, true)) ? true : false;
-    }
-    public function can_capture($order_id) {
-        $result = get_post_meta($order_id, static::TABBY_STATUS_FIELD, true) == static::STATUS_AUTH;
+    public function can_capture($order) {
+        $result = $order->get_meta(static::TABBY_STATUS_FIELD, true) == static::STATUS_AUTH;
 
         // check payment status on Tabby
-        $payment = $this->get_tabby_payment($order_id);
+        $payment = $this->get_tabby_payment($order);
         if (property_exists($payment, 'status')) {
             $result = ($payment->status == 'AUTHORIZED');
 
             // if captured, update internal status
             if ($payment->status == 'CLOSED' && property_exists($payment, 'captures') && count($payment->captures) > 0) {
-                update_post_meta($order_id, static::TABBY_STATUS_FIELD, static::STATUS_CAPTURED);
+                $order->update_meta_data(static::TABBY_STATUS_FIELD, static::STATUS_CAPTURED);
+                $order->save();
             }
         }
 
         return $result;
     }
 
-    public function get_tabby_payment($order_id) {
-        $payment_id = $this->get_tabby_payment_id($order_id);
+    public function get_tabby_payment($order) {
+        $payment_id = $this->get_tabby_payment_id($order);
 
         return $this->request($payment_id);
     }
@@ -832,7 +840,7 @@ class WC_Gateway_Tabby_Checkout_Base extends WC_Payment_Gateway {
     public function process_refund( $order_id, $amount = null, $reason = '' ) {
         try {
           $order = wc_get_order( $order_id );
-          $payment_id = $this->get_tabby_payment_id($order->get_id());
+          $payment_id = $this->get_tabby_payment_id($order);
           $refunds = $order->get_refunds();
 
           $logData = array(
@@ -854,7 +862,7 @@ class WC_Gateway_Tabby_Checkout_Base extends WC_Payment_Gateway {
           }
 
           $data = [
-              "capture_id"        => $this->get_order_capture_id($order->get_id()),
+              "capture_id"        => $this->get_order_capture_id($order),
               "amount"            => $this->formatAmount($refund->get_amount()),
               "reason"            => $refund->get_reason()
           ];
@@ -885,7 +893,8 @@ class WC_Gateway_Tabby_Checkout_Base extends WC_Payment_Gateway {
                   /* translators: %1$s is replaced with payment amount, %2$s is replaced with Tabby refund ID */
                   sprintf( __( 'Refunded %1$s - Refund ID: %2$s', 'tabby-checkout' ), $txn->amount, $txn->id )
               );
-              update_post_meta($order->get_id(), static::TABBY_STATUS_FIELD, static::STATUS_REFUNDED);
+              $order->update_meta_data(static::TABBY_STATUS_FIELD, static::STATUS_REFUNDED);
+              $order->save();
               return true;
           }
 
