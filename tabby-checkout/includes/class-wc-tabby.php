@@ -42,7 +42,21 @@ class WC_Tabby {
         // from pay for order form
         add_action('woocommerce_before_pay_action', array(__CLASS__, 'woocommerce_store_api_checkout_order_processed'));
 
+        // remove old payment methods from settings page
+        add_action('woocommerce_admin_field_payment_gateways', array(__CLASS__, 'woocommerce_admin_field_payment_gateways'));
     }
+
+    public static function woocommerce_admin_field_payment_gateways() {
+        foreach (WC()->payment_gateways()->payment_gateways as $key => $gateway) {
+            switch (get_class($gateway)) {
+                case 'WC_Gateway_Tabby_Credit_Card_Installments':
+                case 'WC_Gateway_Tabby_PayLater':
+                    unset (WC()->payment_gateways()->payment_gateways[$key]);
+                    break;
+            }
+        }
+    }
+
     public static function woocommerce_checkout_order_processed($order_id, $post_data, &$order) {
         static::woocommerce_store_api_checkout_order_processed($order);
     }
@@ -60,7 +74,10 @@ class WC_Tabby {
 
         if ($transaction_id = (array_key_exists('transaction_id', $context->payment_data) ? $context->payment_data['transaction_id'] : false)) {
             $gateway->update_order_payment_id($context->order, $transaction_id);
-            $res = $gateway->update_payment_reference_id($transaction_id, $context->order->get_id());
+            $res = $gateway->update_payment_reference_id(
+                $transaction_id,
+                woocommerce_tabby_get_order_reference_id($context->order)
+            );
             if (is_object($res) && property_exists($res, 'status') && ($res->status != 'error')) {
                 $result->set_status('success');
             } else {
@@ -79,7 +96,10 @@ class WC_Tabby {
         if (!($gateway instanceof WC_Gateway_Tabby_Checkout_Base)) return;
         if ($order->get_transaction_id()) {
             $gateway->update_order_payment_id($order, $order->get_transaction_id());
-            $gateway->update_payment_reference_id($order->get_transaction_id(), $order->get_id());
+            $gateway->update_payment_reference_id(
+                $order->get_transaction_id(),
+                woocommerce_tabby_get_order_reference_id($order)
+            );
         }
         return $order;
     }

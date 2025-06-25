@@ -5,6 +5,7 @@ class WC_Tabby_Api_Feed {
     const TABBY_CHECKOUT_FEED_TOKEN_OPTION = 'tabby_checkout_feed_token';
     const TABBY_CHECKOUT_FEED_CRED_OPTION = 'tabby_checkout_feed_cred';
     const TABBY_CHECKOUT_FEED_REG_ATTEMPT = 'tabby_checkout_feed_reg_attempt';
+    const TABBY_CHECKOUT_FEED_UNREG_ATTEMPT = 'tabby_checkout_feed_unreg_attempt';
     const TABBY_CHECKOUT_FEED_CODES = ['AE', 'SA', 'KW'];
 
     public static function canOperate() {
@@ -23,19 +24,30 @@ class WC_Tabby_Api_Feed {
         if (!static::isRegistered()) {
             return true;
         }
+        // check if there is previous uninstall attempt
+        if (time() < (int)get_option(self::TABBY_CHECKOUT_FEED_UNREG_ATTEMPT, 0)) {
+            // bypass request
+            return false;
+        }
         $cred = json_decode(get_option(self::TABBY_CHECKOUT_FEED_CRED_OPTION, json_encode($this->getFeedCredentials())), true);
         unset($cred['secretKey']);
         $result = $this->request('uninstall', 'POST', $cred);
-        delete_option(self::TABBY_CHECKOUT_FEED_TOKEN_OPTION);
-        delete_option(self::TABBY_CHECKOUT_FEED_CRED_OPTION);
-        delete_option(self::TABBY_CHECKOUT_FEED_REG_ATTEMPT);
+        // successful
+        if (sizeof((array)$result) == 0) {
+            delete_option(self::TABBY_CHECKOUT_FEED_TOKEN_OPTION);
+            delete_option(self::TABBY_CHECKOUT_FEED_CRED_OPTION);
+            delete_option(self::TABBY_CHECKOUT_FEED_REG_ATTEMPT);
+            delete_option(self::TABBY_CHECKOUT_FEED_UNREG_ATTEMPT);
+        } else {
+            // unregister failed
+            update_option(self::TABBY_CHECKOUT_FEED_UNREG_ATTEMPT, time() + 2 * HOUR_IN_SECONDS);
+        }
 
         return true;
     }
     public function register() {
         // check if there is previous registration attempt
-        $reg_attempt_name = self::TABBY_CHECKOUT_FEED_REG_ATTEMPT;
-        if (time() < (int)get_option($reg_attempt_name, 0)) {
+        if (time() < (int)get_option(self::TABBY_CHECKOUT_FEED_REG_ATTEMPT, 0)) {
             // bypass request
             return false;
         }
@@ -52,7 +64,7 @@ class WC_Tabby_Api_Feed {
             return true;
         } else {
             // registration failed - set transient to 4 hours
-            update_option($reg_attempt_name, time() + 4 * HOUR_IN_SECONDS);
+            update_option(self::TABBY_CHECKOUT_FEED_REG_ATTEMPT, time() + 4 * HOUR_IN_SECONDS);
 
             // log site logo for failed registrations
             if (has_custom_logo()) {

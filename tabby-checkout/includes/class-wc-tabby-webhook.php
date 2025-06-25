@@ -4,7 +4,7 @@ require_once (__DIR__ . '/class-wc-rest-tabby-controller.php');
 class WC_Tabby_Webhook {
     public static function register() {
         if (WC_Tabby_Api::needs_setup()) {
-            static::ddlog("info", "Tabby is not configured, but webhook 'register' called. Possible first module installation.");
+            static::ddlog("warn", "Tabby is not configured, but webhook 'register' called. Possible first module installation.");
             return;
         }
         // get webhook url
@@ -52,6 +52,10 @@ class WC_Tabby_Webhook {
         static::ddlog("info", "Updating webhook", null, $data);
         return WC_Tabby_Api::request('webhooks/' . $hook->id, 'PUT', $data, $code);
     }
+    public static function deleteWebhook($hook, $code) {
+        static::ddlog("info", "Deleting webhook", null, $hook);
+        return WC_Tabby_Api::request('webhooks/' . $hook->id, 'DELETE', null, $code);
+    }
     public static function getWebhooks($code) {
         return WC_Tabby_Api::request('webhooks', 'GET', null, $code);
     }
@@ -59,6 +63,33 @@ class WC_Tabby_Webhook {
         return (bool)preg_match('#^sk_test#', WC_Tabby_Api::get_api_option('secret_key'));
     }
     public static function unregister() {
+        if (WC_Tabby_Api::needs_setup()) {
+            static::ddlog("warn", "Tabby is not configured, but webhook 'unregister' called. Possible wrong module configuration.");
+            return;
+        }
+        // get webhook url
+        $url = WC_REST_Tabby_Controller::getEndpointUrl();
+        static::ddlog("info", "unregister: Checking webhook is registered.", null, ['url' => $url]);
+        
+        // request all webhooks
+        foreach (WC_Tabby_Config::ALLOWED_COUNTRIES as $country) {
+            // get list of registered hooks
+            $hooks = static::getWebhooks($country);
+            // bypass not authorized errors
+            if (static::isNotAuthorized($hooks)) {
+                static::ddlog("info", "unregister: Store code not authorized for merchant", null, ['code' => $country]);
+                continue;
+            }
+            if (!is_array($hooks)) {
+                $hooks = [$hooks];
+            }
+            foreach ($hooks as $hook) {
+                if (!is_object($hook)) continue;
+                if (property_exists($hook, 'url') && $hook->url == $url && $hook->is_test === static::getIsTest()) {
+                    static::deleteWebhook($hook, $country);
+                }
+            }
+        }
     }
     public static function ddlog($status = "error", $message = "Something went wrong", $e = null, $data = null) {
         return WC_Tabby_Api::ddlog($status, $message, $e, $data);

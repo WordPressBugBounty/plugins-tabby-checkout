@@ -75,14 +75,18 @@ error_reporting($er);
 
         switch ($response['response']['code']) {
         case 200:
-            $result = json_decode($response["body"]);
+            $result = json_decode($response["body"]) ?: new \StdClass();
             static::debug(['response - success data', (array)$result]);
             break;
+        case 403:
+            if (substr(trim($response["body"]), 0, 15) == '<!DOCTYPE html>') {
+                static::ddlog('error', 'API html response detected', null, $logData);
+            }
         default:
             $body = $response["body"];
             $msg = "Server returned: " . $response['response']['code'] . '. ';
             if (!empty($body)) {
-                $result = json_decode($body);
+                $result = json_decode($body) ?: new \StdClass();
                 if (!property_exists($result, 'error')) {
                     $result->error = '';
                     $msg .= $result->errorType . ': ' . $result->error;
