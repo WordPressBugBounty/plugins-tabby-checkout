@@ -1,6 +1,6 @@
 <?php
 class WC_Tabby_Api {
-    const API_URI  = 'https://'.TABBY_CHECKOUT_API_DOMAIN.'/api/v1/';
+    const API_URI = 'https://'.TABBY_CHECKOUT_API_DOMAIN.'/api/v1/';
     const API2_URI = 'https://'.TABBY_CHECKOUT_API_DOMAIN.'/api/v2/';
 
     public static function needs_setup() {
@@ -28,10 +28,10 @@ class WC_Tabby_Api {
         $client = new \WP_Http();
 
 
-        $url = static::API_URI . $endpoint;
+        $url = static::API2_URI . $endpoint;
 
-        if (($method == 'GET' && $endpoint != 'webhooks') || $endpoint == 'checkout') {
-            $url = static::API2_URI . $endpoint;
+        if ($endpoint == 'webhooks') {
+            $url = static::API_URI . $endpoint;
         }
 
         $args = array();
@@ -87,14 +87,8 @@ error_reporting($er);
             $msg = "Server returned: " . $response['response']['code'] . '. ';
             if (!empty($body)) {
                 $result = json_decode($body) ?: new \StdClass();
-                if (!property_exists($result, 'error')) {
-                    $result->error = '';
-                    $msg .= $result->errorType . ': ' . $result->error;
-                }
                 static::debug(['response - body - ', (array)$result]);
             }
-            //wc_add_notice( __($msg), 'error');
-            //throw new \Exception( $msg );
             break;
         }
 
@@ -105,7 +99,8 @@ error_reporting($er);
         if (static::get_api_option('debug', 'no') == 'yes') {
             if (!file_exists(__DIR__ . '/../log')) mkdir (__DIR__ . '/../log', 0777);
             $fp = fopen(__DIR__ . '/../log/tabby.log', "a+");
-            fputs($fp, date("[Y-m-d H:i:s] ") . print_r($data, true));
+            $msg = self::mask_secret_key(print_r($data, true));
+            fputs($fp, date("[Y-m-d H:i:s] ") . $msg);
             fclose($fp);
         } else {
             //if log file exists, delete it
@@ -114,6 +109,9 @@ error_reporting($er);
                 rmdir(__DIR__ . '/../log/');
             }
         };
+    }
+    public static function mask_secret_key($str) {
+        return preg_replace("#Bearer sk_[^\n]*\-[0-9a-f]{8}([0-9a-f]{4})#s", "Bearer sk_XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXX\\1\n", $str);
     }
 
     public static function ddlog($status = "error", $message = "Something went wrong", $e = null, $data = null) {
@@ -149,6 +147,11 @@ error_reporting($er);
         }
 
         if ($data) {
+            if (array_key_exists('request.headers', $data)) {
+                array_walk($data['request.headers'], function (&$item) {
+                    $item = WC_Tabby_Api::mask_secret_key($item);
+                });
+            }
             $log["data"] = $data;
         }
 

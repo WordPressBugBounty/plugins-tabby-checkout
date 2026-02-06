@@ -65,7 +65,7 @@ class WC_REST_Tabby_Controller {
             ]);
             return new WP_Error(
                 'tabby_webhook_error',
-                __('Webhook execution error: ' . $e->getMessage()),
+                __('Webhook execution error'),
                 array('status'  => 503)
             );
         }

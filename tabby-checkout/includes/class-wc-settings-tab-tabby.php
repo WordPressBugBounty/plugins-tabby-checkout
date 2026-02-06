@@ -185,6 +185,13 @@ class WC_Settings_Tab_Tabby {
                 'default'   => 'yes'
             );
             $settings_tabby[] = array(
+                'name'     => __( 'Inherit background (promo)', 'tabby-checkout' ),
+                'id'       => 'tabby_promo_inherit_bg',
+                'type'     => 'checkbox',
+                'desc'     => __( 'Inherit background on Tabby promo snippets', 'tabby-checkout' ),
+                'default'   => 'no'
+            );
+            $settings_tabby[] = array(
                 'name'     => __( 'Minimum price for Tabby promo', 'tabby-checkout' ),
                 'id'       => 'tabby_checkout_promo_min_total',
                 'type'     => 'text',
@@ -232,12 +239,6 @@ Set up the limit between 0 - 50000 to show Standard promotion snippets for the a
                 'autoload'          => false,
             );
 */
-            $settings_tabby[] = array(
-                'name'     => __( 'Tabby promotions theme', 'tabby-checkout' ),
-                'id'       => 'tabby_checkout_promo_theme',
-                'type'     => 'text',
-                'desc'     => __( 'Used for styling Tabby promotions widget (blank for default)', 'tabby-checkout' ),
-            );
             $settings_tabby[] = array(
                 'name'     => __( 'Disable for SKUs (one per line)', 'tabby-checkout' ),
                 'id'       => 'tabby_checkout_disable_for_sku',

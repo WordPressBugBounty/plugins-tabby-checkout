@@ -1,7 +1,6 @@
 <?php
 class WC_Tabby_AJAX {
     public static function init() {
-        add_action( 'wc_ajax_get_order_history',   array( __CLASS__, 'get_order_history' ) );
         add_action( 'wc_ajax_get_prescoring_data', array( __CLASS__, 'get_prescoring_data' ) );
         add_filter( 'query_vars',                  array( __CLASS__, 'query_vars'        ) );
         add_filter( 'woocommerce_get_script_data', array( __CLASS__, 'get_script_data'   ) , 10, 2);
@@ -9,13 +8,10 @@ class WC_Tabby_AJAX {
     public static function get_script_data($params, $handle) {
         if ($handle == 'wc-checkout') {
             $params['get_prescoring_data_nonce'] = wp_create_nonce( 'get_prescoring_data' );
-            $params['get_order_history_nonce'] = wp_create_nonce( 'get_order_history' );
         }
         return $params;
     }
     public static function query_vars( $vars ) {
-        $vars[] = 'email';
-        $vars[] = 'phone';
         $vars[] = 'buyer';
         return $vars;
     }
@@ -58,21 +54,6 @@ class WC_Tabby_AJAX {
             "status"    => empty($available_products) ? 'error' : 'created',
             "availableProducts" => $available_products 
         ] );
-    }
-    public static function get_order_history() {
-
-        check_ajax_referer( 'get_order_history', 'security' );
-
-        $email = get_query_var('email', false);
-        $phone = get_query_var('phone', false);
-
-        $data = [
-            "email" => $email,
-            "phone" => $phone,
-            "order_history" => self::getOrderHistoryObject($email, $phone)
-        ];
-
-        wp_send_json( $data );
     }
     public static function getOrderHistoryObject($email, $phone) {
         $result = [];

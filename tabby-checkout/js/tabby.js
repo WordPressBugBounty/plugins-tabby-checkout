@@ -29,13 +29,10 @@ class TabbyRenderer {
             function () {jQuery( document.body ).trigger('update_checkout')}
         );
         jQuery( document.body ).bind( 'payment_method_selected', this.updatePlaceOrderButton );
-        this.style = document.createElement('style');
-        this.style.type = 'text/css';
         this.adjustStyleSheet();
         setTimeout(function () {
             tabbyRenderer.updatePlaceOrderButton();
         }, 300);
-        document.getElementsByTagName('head')[0].appendChild(this.style);
     }
     getFieldEmail() {
         if (typeof tabbyConfig !== 'undefined' && tabbyConfig.ignoreEmail) {
@@ -100,17 +97,6 @@ class TabbyRenderer {
         }
     }
     update() {
-        // check payment methods form
-        jQuery("input[name=\"payment_method\"]").each (function () {
-            if (/tabby_/.test(jQuery(this).val())) {
-                // check if (i) added to label
-                if (!jQuery(this).parent().find("label").find("[data-tabby-info]").length) {
-                    jQuery(this).parent().find('label').prepend(jQuery(this).parent().find(".payment_box").find("img[data-tabby-info]"));
-                    jQuery(this).parent().find("label").find("[data-tabby-info]").css('display', 'inline-block');
-                }
-
-            }
-        });
         this.config = window.tabbyConfig;
         this.adjustStyleSheet();
         if (!this.canUpdate()) return;
@@ -141,14 +127,18 @@ class TabbyRenderer {
         }
     }
     adjustStyleSheet() {
+        if (typeof this.style == 'undefined') {
+            this.style = new CSSStyleSheet();
+            document.adoptedStyleSheets = [...document.adoptedStyleSheets, this.style];
+        }
         if (this.config && this.config.hideMethods) {
-            this.style.innerHTML = '';
+            this.style.replaceSync('');
             for (var i in this.methods) {
                 if (this.products.hasOwnProperty(i)) {
-                    this.style.innerHTML += '.payment_method_tabby_' + this.methods[i] + '{display:block;}\n';
+                    this.style.insertRule('.payment_method_tabby_' + this.methods[i] + '{display:block;}');
                 } else {
                     if (tabbyConfig && tabbyRenderer.formFilled) {
-                        this.style.innerHTML += '.payment_method_tabby_' + this.methods[i] + '{display:none;}\n';
+                        this.style.insertRule('.payment_method_tabby_' + this.methods[i] + '{display:none;}');
                     }
                 }
             }
@@ -217,23 +207,5 @@ class TabbyRenderer {
     }
     isPayForOrderPage() {
         return jQuery('input[name=woocommerce_pay]').length && (jQuery('input[name=woocommerce_pay]').val() == 1);
-    }
-    getShippingAddress() {
-        if (this.isPayForOrderPage()) return this.config.shipping_address;
-        const prefix = jQuery('#ship-to-different-address-checkbox:checked').length > 0 ? 'shipping' : 'billing';
-        return {
-            address: this.getAddressStreet(prefix),
-            city: this.getAddressCity(prefix)
-        }
-    }
-    getAddressStreet(prefix) {
-        const street1 = jQuery('#' + prefix + '_address_1');
-        const street2 = jQuery('#' + prefix + '_address_2');
-        
-        return (street1 ? street1.val() : '') + (street2 && street2.val() ? ', ' + street2.val() : '');
-    }
-    getAddressCity(prefix) {
-        const city = jQuery('#' + prefix + '_city');
-        return city ? city.val() : null;
     }
 }

@@ -158,7 +158,7 @@ class WC_Tabby_Feed_Sharing {
     }
     public static function shutdown() {
         // run cron service on every 100 request
-        if (rand(1, 1000) <= 10) {
+        if (random_int(1, 999) <= 10) {
             self::cron_service();
         }
 

@@ -8,11 +8,12 @@ class WC_Tabby_Promo {
         add_action('admin_enqueue_scripts'              , array( __CLASS__, 'admin_enqueue_scripts') );
     }
     public static function wp_enqueue_scripts() {
+        if (!function_exists('is_checkout')) return;
         if (is_checkout()) {
             // css
             wp_enqueue_style('tabby-checkout', plugins_url('css/tabby.css', dirname(__FILE__)));
             // js
-            wp_enqueue_script('tabby-checkout-integration', 'https://'.TABBY_CHECKOUT_DOMAIN.'/cms-plugins.js', [], null, true);
+            wp_enqueue_script('tabby-checkout-integration', 'https://'.TABBY_CHECKOUT_DOMAIN.'/tabby-card.js', [], null, true);
             if (WC_Gateway_Tabby_Checkout_Base::is_classic_checkout_enabled()) {
                 wp_enqueue_script('tabby-checkout-tabby-js', plugins_url('js/tabby.js', dirname(__FILE__)), [], MODULE_TABBY_CHECKOUT_VERSION, true);
             }
@@ -112,18 +113,18 @@ document.addEventListener('DOMContentLoaded', () => {
             "selector"  => "#tabbyPromo",
             "merchantCode" => self::getMerchantCode(),
             "publicKey" => self::getPublicKey(),
+            "shouldInheritBg" => self::getShouldInheritBg(),
             "lang"      => self::getLocale(),
-            "localeSource"=> get_option('tabby_checkout_locale_html') == 'yes' ? 'html' : '',
             "currency"  => self::getCurrency(),
             "price"     => self::getPrice(),
             "email"     => self::getEmail(),
             "phone"     => self::getPhone(),
             "source"    => self::getSource(),
             "sourcePlugin"=> 'woo',
-            "theme"     => self::getTheme(),
-            "installmentsCount" => self::getInstallmentsCount(),
-            "productType"=> self::getProductType(),
         ];
+    }
+    public static function getShouldInheritBg() {
+        return get_option('tabby_promo_inherit_bg', 'no') == 'yes';
     }
     public static function getProductType() {
         return self::isCreditCardInstallmentsActive() && (!self::isInstallmentsOrPayLaterActive() || self::isCreditCardInstallmentsActiveByPrice()) ? 'creditCardInstallments' : 'installments';
@@ -149,20 +150,6 @@ document.addEventListener('DOMContentLoaded', () => {
         
         return $type_price >= 0 && self::getPrice() >= $type_price;
     }
-    public static function getPromoThemeConfig() {
-        $theme = explode(':', get_option('tabby_checkout_promo_theme', ''));
-
-        return [
-            'theme'     => array_shift($theme),
-            'installmentsCount' => !empty($theme) ? 0 : 4
-        ];
-    }
-    public static function getTheme() {
-        return self::getPromoThemeConfig()['theme'];
-    }
-    public static function getInstallmentsCount() {
-        return self::getProductType() == 'installments' ? self::getPromoThemeConfig()['installmentsCount'] : 4;
-    }
     public static function getSource() {
         return is_admin() ? 'adminBlockEditor' : (is_product() ? 'product' : 'cart');
     }
@@ -170,7 +157,7 @@ document.addEventListener('DOMContentLoaded', () => {
         return WC_Tabby_Config::getPromoMerchantCode();
     }
     public static function getPublicKey() {
-        return get_option('tabby_checkout_public_key');
+        return get_option('tabby_checkout_public_key', '');
     }
     public static function getLocale() {
         return get_locale();

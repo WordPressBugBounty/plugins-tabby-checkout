@@ -16,7 +16,7 @@ class WC_Gateway_Tabby_Checkout_Base extends WC_Payment_Gateway {
     const STATUS_CLOSED   = 'refunded';
 
     // method description
-    const METHOD_DESCRIPTION_TYPE = 2;
+    const METHOD_DESCRIPTION_TYPE = 1;
 
     // cookie track
     const TRACK_COOKIE_KEY = 'xxx111otrckid';
@@ -38,7 +38,7 @@ class WC_Gateway_Tabby_Checkout_Base extends WC_Payment_Gateway {
         add_action( 'woocommerce_order_status_completed' , array( $this, 'capture_payment' ) );
         add_action( 'woocommerce_order_status_cancelled' , array( $this, 'cancel_payment' ) );
 
-        $this->icon = plugin_dir_url( dirname( __FILE__ ) ) . 'images/logo_green.png';
+        $this->icon = plugin_dir_url( dirname( __FILE__ ) ) . 'images/logo_green.png?v=' . MODULE_TABBY_CHECKOUT_VERSION;
         $this->title = $this->method_title = __($this->get_option('title', static::METHOD_NAME), 'tabby-checkout');
         $this->method_description = static::METHOD_DESC;
 
@@ -49,7 +49,7 @@ class WC_Gateway_Tabby_Checkout_Base extends WC_Payment_Gateway {
 
     }
 
-    public static function clean_order_transaction_id(&$order) {
+    public static function clean_order_transaction_id($order) {
         if ($order->get_transaction_id() === $order->get_meta(static::TABBY_PAYMENT_FIELD, true)) {
             $order->set_transaction_id('');
             $order->delete_meta_data(static::TABBY_PAYMENT_FIELD);
@@ -117,20 +117,18 @@ class WC_Gateway_Tabby_Checkout_Base extends WC_Payment_Gateway {
                     'type' => 'select',
                     'options'  => [
                         //0   => __('PromoCardWide'    , 'tabby-checkout'),
-                        //1   => __('PromoCard'        , 'tabby-checkout'),
-                        2   => __('Text description' , 'tabby-checkout'),
+                        1   => __('PromoCard'        , 'tabby-checkout'),
+                        //2   => __('Text description' , 'tabby-checkout'),
                         3   => __('Blanc description', 'tabby-checkout')
                     ],
                     'description' => __( 'This controls the description which the user sees during checkout.', 'tabby-checkout' ),
                     'default' => __( static::METHOD_DESCRIPTION_TYPE, 'tabby-checkout' ),
                 ),
-/*
-                'card_theme' => array(
-                    'title' => __( 'Promo Card Theme', 'tabby-checkout' ),
-                    'type' => 'text',
-                    'default' => 'black',
+                'inherit_bg' => array(
+                    'title' => __( 'PromoCard background inherit', 'tabby-checkout' ),
+                    'type' => 'checkbox',
+                    'default'   => 'no'
                 )
-*/
             );
         } else {
             $this->form_fields = array(
@@ -144,13 +142,20 @@ class WC_Gateway_Tabby_Checkout_Base extends WC_Payment_Gateway {
         }
     }
 
+    public function getDescriptionType() {
+        $dt = $this->get_option('description_type', static::METHOD_DESCRIPTION_TYPE);
+
+        return in_array($dt, [1,3]) ? $dt : 1;
+    }
+
+    public function getShouldInheritBg() {
+        return $this->get_option('inherit_bg', 'no') !== 'no';
+    }
     public function get_description_config() {
         $res = [];
-        $dtype = strpos(get_option('tabby_checkout_promo_theme', ''), ':') === false ? $this->get_option('description_type', static::METHOD_DESCRIPTION_TYPE) : 2;
-        switch ($dtype) {
+        switch ($this->getDescriptionType()) {
             case 0:
             case 1:
-/*
                 $divId = static::TABBY_METHOD_CODE . 'Card';
                 $jsClass = 'TabbyCard';
                 if (static::TABBY_METHOD_CODE == 'creditCardInstallments') $jsClass = 'TabbyPaymentMethodSnippetCCI';
@@ -161,7 +166,6 @@ class WC_Gateway_Tabby_Checkout_Base extends WC_Payment_Gateway {
                     'jsConf' =>  $this->getTabbyCardJsonConfig($divId)
                 ];
                 break;
-*/
             case 2:
                 $res = [
                     'class' => "tabbyDesc",
@@ -172,22 +176,6 @@ class WC_Gateway_Tabby_Checkout_Base extends WC_Payment_Gateway {
                 $res['class'] = 'empty';
 
         }
-        $res['info'] = [
-            'style' => [
-                'verticalAlign' => 'middle',
-                'cursor'    => 'pointer',
-                'width'     => '16px',
-                'margin'    => '5px'
-            ],
-            'class' => 'info',
-            'data-tabby-info'   => esc_attr(static::TABBY_METHOD_CODE),
-            'data-tabby-price'  => esc_attr($this->formatAmount($this->get_order_total())),
-            'data-tabby-currency' =>  esc_attr(WC_Tabby_Config::getTabbyCurrency()),
-            'data-tabby-language' => esc_attr(WC_Tabby_Config::get_lang()),
-            'data-tabby-installments-count' => WC_Tabby_Promo::getInstallmentsCount(),
-            'src'   => plugin_dir_url( dirname( __FILE__ ) ) . 'images/info.png',
-            'alt'   => 'Tabby'
-        ];
         return $res;
     }
     public function get_order_total($order = null) {
@@ -196,52 +184,62 @@ class WC_Gateway_Tabby_Checkout_Base extends WC_Payment_Gateway {
     }
 
     public function payment_fields() {
-        echo '<script>window.tabbyConfig = '.$this->getTabbyConfig().'</script>';
-        $dtype = strpos(get_option('tabby_checkout_promo_theme', ''), ':') === false ? $this->get_option('description_type', static::METHOD_DESCRIPTION_TYPE) : 2;
-        switch ($dtype) {
+        $config = $this->getFrontTabbyConfig();
+        if (is_checkout_pay_page()) {
+            $order_id = $wp->query_vars['order-pay'];
+            if (empty($order_id)) {
+                $order_key = $wp->query_vars['key'];
+                $order_id = wc_get_order_id_by_order_key( $order_key );
+            }
+            $order = wc_get_order($order_id);
+            $customer = new \WC_Customer($order->get_customer_id());
+            $config['buyer'] = $this->getBuyerObject($order);
+        }
+        echo '<script>window.tabbyConfig = '.json_encode($config).'</script>';
+        switch ($this->getDescriptionType()) {
             case 0:
             case 1:
-/*
                 $divId = static::TABBY_METHOD_CODE . 'Card';
                 $jsClass = 'TabbyCard';
                 if (static::TABBY_METHOD_CODE == 'creditCardInstallments') $jsClass = 'TabbyPaymentMethodSnippetCCI';
                 echo '<div id="'.esc_attr($divId).'"></div>';
                 echo '<script>  if (typeof '.esc_js($jsClass).' !== \'undefined\') new '.esc_js($jsClass).'(' . $this->getTabbyCardJsonConfig($divId) .');</script>';
                 break;
-*/
             case 2:
                 echo '<div class="tabbyDesc">' . __(static::METHOD_DESC, 'tabby-checkout') . '</div>';
                 break;
 
         }
-        echo '<img style="display:none; vertical-align: middle; cursor: pointer;margin: 5px;" class="info" data-tabby-info="'.esc_attr(static::TABBY_METHOD_CODE).'" data-tabby-price="'.esc_attr($this->formatAmount($this->get_order_total())).'" data-tabby-currency="'. esc_attr(WC_Tabby_Config::getTabbyCurrency()).'" data-tabby-language="'.esc_attr(WC_Tabby_Config::get_lang()).'" data-tabby-installments-count="'.WC_Tabby_Promo::getInstallmentsCount().'" src="'.plugin_dir_url( dirname( __FILE__ ) ) . 'images/info.png" alt="Tabby">';
-
     }
     public function getTabbyCardJsonConfig($divId) {
         return json_encode([
             'selector'  => '#' . $divId,
+            'publicKey' => $this->get_api_option('public_key'),
+            'merchantCode' => WC_Tabby_Config::getPromoMerchantCode(),
             'currency'  => WC_Tabby_Config::getTabbyCurrency(),
             'lang'      => WC_Tabby_Config::get_lang(),
             'price'     => $this->formatAmount($this->get_order_total()),
-            'size'      => $this->get_option('description_type', static::METHOD_DESCRIPTION_TYPE) == 0 ? 'wide' : 'narrow',
-            //'theme'     => $this->get_option('card_theme', 'black'),
-            'header'    => false
+            'shouldInheritBg'   => $this->getShouldInheritBg(),
         ]);
     }
 
+    public function getFrontTabbyConfig() {
+        return [
+            'debug'         => $this->get_api_option('debug') == 'yes' ? 1 : 0,
+            'hideMethods'   => $this->get_api_option('hide_methods') == 'yes',
+            'ignoreEmail'   => apply_filters('tabby_checkout_ignore_email', false),
+            'language'      => $this->getLanguage(),
+            'locale'        => WC_Tabby_Config::get_lang(),
+            'localeSource'  => $this->get_api_option('locale_html') == 'yes' ? 'html' : '',
+            'notAvailableMessage' => __('Sorry Tabby is unable to approve this purchase, please use an alternative payment method for your order.', 'tabby-checkout'),
+        ];
+    }
     public function getTabbyConfig($order = null) {
         global $wp;
-        $config = [];
+        $config = $this->getFrontTabbyConfig();
         $config['apiKey']  = $this->get_api_option('public_key');
         $config['merchantCode'] = WC_Tabby_Config::getMerchantCode($order);
-        $config['locale']  = WC_Tabby_Config::get_lang();
-        $config['language']= $this->getLanguage();
-        $config['hideMethods'] = $this->get_api_option('hide_methods') == 'yes';
-        $config['localeSource'] = $this->get_api_option('locale_html') == 'yes' ? 'html' : '';
-        $config['debug']   = $this->get_api_option('debug') == 'yes' ? 1 : 0;
-        $config['notAvailableMessage'] = __('Sorry Tabby is unable to approve this purchase, please use an alternative payment method for your order.', 'tabby-checkout');
 // used to ignore email on checkout
-        $config['ignoreEmail'] = apply_filters('tabby_checkout_ignore_email', false);
         $config['buyer_history'] = null;
         // buyer and shipping address for pay_for_order functionality
         if (is_checkout_pay_page()) {
@@ -428,7 +426,7 @@ class WC_Gateway_Tabby_Checkout_Base extends WC_Payment_Gateway {
         return [
             'reference_id'      => (string) (
                 $order == null
-                    ? md5(json_encode($this->getOrderItemsObject($order)))
+                    ? hash("sha512", (json_encode($this->getOrderItemsObject($order))))
                     : woocommerce_tabby_get_order_reference_id($order)
             ),
             'shipping_amount'   => $this->formatAmount(

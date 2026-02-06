@@ -163,8 +163,8 @@ msgid "No fees. Pay with any credit card."
 msgstr "بدون أي رسوم. ادفع بأي بطاقة ائتمانية."
 
 #: includes/class-wc-gateway-tabby-installments.php:5
-msgid "Pay in 4. No interest, no fees."
-msgstr "قسّمها على 4. بدون أي فوائد، أو رسوم."
+msgid "Pay later with Tabby"
+msgstr "ادفع لاحقًا عبر تابي"
 
 #: includes/class-wc-gateway-tabby-installments.php:6
 msgid "Use any card."

@@ -3,7 +3,6 @@
  */
 const registerPaymentMethod = window.wc.wcBlocksRegistry.registerPaymentMethod;
 const getPaymentMethodData = window.wc.wcSettings.getPaymentMethodData;
-const __ = window.wp.i18n.__;
 
 const settings = getPaymentMethodData( 'tabby_installments', {} );
 const defaultLabel = 'Pay in 4. No interest, no fees.';
@@ -22,12 +21,8 @@ const TabbyIcon = () => {
     }, null);
 }
 
-const TabbyInfo = () => {
-    return React.createElement('img', settings?.config?.info, null);
-}
-
 const Label = () => {
-    return [window.wp.element.createElement(TabbyIcon), React.createElement('span', null, title), window.wp.element.createElement(TabbyInfo)];
+    return [window.wp.element.createElement(TabbyIcon), React.createElement('span', null, title)];
 }
 
 const InitTabbyCard = (className, classParams) => {
@@ -80,7 +75,7 @@ const tabbyInstallmentsPaymentMethod = {
         return true;
     },
     ariaLabel: title,
-    placeOrderButtonLabel: __(
+    placeOrderButtonLabel: window.wp.i18n.__(
         'Proceed to Tabby',
         'tabby-checkout'
     ),

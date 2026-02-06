@@ -70,6 +70,12 @@ class WC_Tabby_Config {
             $code = WC()->customer->get_billing_country() ?: WC()->customer->get_shipping_country();
         }
         if ($code == 'undefined' || empty($code)) $code = wc_get_base_location()['country'];
+        if (!in_array($code, self::ALLOWED_COUNTRIES)) {
+            $code = static::ALLOWED_COUNTRIES[0];
+            if (($index = array_search($order ? $order->get_currency() : static::getTabbyCurrency(), static::ALLOWED_CURRENCIES)) !== false) {
+                $code = static::ALLOWED_COUNTRIES[$index];
+            }
+        }
         return $code;
     }
     public static function getMerchantUrls($order = null) {

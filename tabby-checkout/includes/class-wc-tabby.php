@@ -25,6 +25,7 @@ class WC_Tabby {
         // must be inited after other plugins to use woocommerce logic in init
         add_action('plugins_loaded', function () {
             WC_Tabby_Feed_Sharing::init();
+            WC_Tabby::update_db_check();
         });
 
         // REST API support
@@ -46,6 +47,20 @@ class WC_Tabby {
         add_action('woocommerce_admin_field_payment_gateways', array(__CLASS__, 'woocommerce_admin_field_payment_gateways'));
     }
 
+    public static function update_db_check() {
+        $version = get_option('tabby_plugin_version', '0.0.1');
+        if (version_compare($version, '5.8.0') == -1) {
+            // update installments settings
+            if ($settings = get_option('woocommerce_tabby_installments_settings', false)) {
+                $settings['description_type'] = 1;
+                unset($settings['card_theme']);
+                $settings['title'] = WC_Gateway_Tabby_Installments::METHOD_NAME;
+                update_option('woocommerce_tabby_installments_settings', $settings);
+            };
+        }
+        update_option('tabby_plugin_version', MODULE_TABBY_CHECKOUT_VERSION, true);
+    }
+
     public static function woocommerce_admin_field_payment_gateways() {
         foreach (WC()->payment_gateways()->payment_gateways as $key => $gateway) {
             switch (get_class($gateway)) {
@@ -57,7 +72,7 @@ class WC_Tabby {
         }
     }
 
-    public static function woocommerce_checkout_order_processed($order_id, $post_data, &$order) {
+    public static function woocommerce_checkout_order_processed($order_id, $post_data, $order) {
         static::woocommerce_store_api_checkout_order_processed($order);
     }
     public static function woocommerce_store_api_checkout_order_processed(&$order) {
@@ -72,6 +87,7 @@ class WC_Tabby {
             return;
         }
 
+        
         if ($transaction_id = (array_key_exists('transaction_id', $context->payment_data) ? $context->payment_data['transaction_id'] : false)) {
             $gateway->update_order_payment_id($context->order, $transaction_id);
             $res = $gateway->update_payment_reference_id(

@@ -16,7 +16,11 @@ class WC_Tabby_Feed_Product {
             $data['group_id'] = (string)$product->get_parent_id();
             $product = wc_get_product($product->get_parent_id());
         }
-        $data['isAvailable'] = self::getTabbyisAvailable($product);
+        // not a product
+        if (!($product instanceof \WC_Product)) {
+            throw new \WC_Tabby_Feed_Product_Exception('Wrong product');
+        }
+        $data['isAvailable'] = self::getTabbyIsAvailable($product);
         if ($product->get_image_id()) {
             $data['images'][] = wp_get_attachment_image_src($product->get_image_id(), 'large')[0];
         }
