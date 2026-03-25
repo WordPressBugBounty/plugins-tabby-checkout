@@ -185,15 +185,18 @@ class WC_Gateway_Tabby_Checkout_Base extends WC_Payment_Gateway {
 
     public function payment_fields() {
         $config = $this->getFrontTabbyConfig();
-        if (is_checkout_pay_page()) {
-            $order_id = $wp->query_vars['order-pay'];
+        if ($pay_page = is_checkout_pay_page()) {
+            $order_id = get_query_var('order-pay', false);
             if (empty($order_id)) {
-                $order_key = $wp->query_vars['key'];
+                $order_key = get_query_var('key');
                 $order_id = wc_get_order_id_by_order_key( $order_key );
             }
-            $order = wc_get_order($order_id);
-            $customer = new \WC_Customer($order->get_customer_id());
-            $config['buyer'] = $this->getBuyerObject($order);
+            $config['buyer'] = [];
+            if (!empty($order_id) && ($order = wc_get_order($order_id))) {
+                $customer = new \WC_Customer($order->get_customer_id());
+                $config['buyer'] = $this->getBuyerObject($order);
+                $config['order_key'] = $order->get_order_key();
+            }
         }
         echo '<script>window.tabbyConfig = '.json_encode($config).'</script>';
         switch ($this->getDescriptionType()) {
@@ -203,7 +206,11 @@ class WC_Gateway_Tabby_Checkout_Base extends WC_Payment_Gateway {
                 $jsClass = 'TabbyCard';
                 if (static::TABBY_METHOD_CODE == 'creditCardInstallments') $jsClass = 'TabbyPaymentMethodSnippetCCI';
                 echo '<div id="'.esc_attr($divId).'"></div>';
-                echo '<script>  if (typeof '.esc_js($jsClass).' !== \'undefined\') new '.esc_js($jsClass).'(' . $this->getTabbyCardJsonConfig($divId) .');</script>';
+                echo '<script>';
+                echo $pay_page ? 'window.addEventListener("load", (event) => {' : '';
+                echo '  if (typeof '.esc_js($jsClass).' !== \'undefined\') new '.esc_js($jsClass).'(' . $this->getTabbyCardJsonConfig($divId) .');';
+                echo $pay_page ? '});' : '';
+                echo '</script>';
                 break;
             case 2:
                 echo '<div class="tabbyDesc">' . __(static::METHOD_DESC, 'tabby-checkout') . '</div>';
@@ -226,6 +233,7 @@ class WC_Gateway_Tabby_Checkout_Base extends WC_Payment_Gateway {
     public function getFrontTabbyConfig() {
         return [
             'debug'         => $this->get_api_option('debug') == 'yes' ? 1 : 0,
+            'order_key'     => false,
             'hideMethods'   => $this->get_api_option('hide_methods') == 'yes',
             'ignoreEmail'   => apply_filters('tabby_checkout_ignore_email', false),
             'language'      => $this->getLanguage(),
@@ -235,7 +243,6 @@ class WC_Gateway_Tabby_Checkout_Base extends WC_Payment_Gateway {
         ];
     }
     public function getTabbyConfig($order = null) {
-        global $wp;
         $config = $this->getFrontTabbyConfig();
         $config['apiKey']  = $this->get_api_option('public_key');
         $config['merchantCode'] = WC_Tabby_Config::getMerchantCode($order);
@@ -243,9 +250,9 @@ class WC_Gateway_Tabby_Checkout_Base extends WC_Payment_Gateway {
         $config['buyer_history'] = null;
         // buyer and shipping address for pay_for_order functionality
         if (is_checkout_pay_page()) {
-            $order_id = $wp->query_vars['order-pay'];
+            $order_id = get_query_var('order-pay', false);
             if (empty($order_id)) {
-                $order_key = $wp->query_vars['key'];
+                $order_key = get_query_var('key', false);
                 $order_id = wc_get_order_id_by_order_key( $order_key );
             }
             $order = wc_get_order($order_id);
@@ -354,7 +361,7 @@ class WC_Gateway_Tabby_Checkout_Base extends WC_Payment_Gateway {
         $tr_name = 'tabby_api_cache_' . $sha256;
 
         if (($available_products = get_transient($tr_name)) === false) {
-            $result = WC_Tabby_Api::request('checkout', 'POST', $request);
+            $result = (new WC_Tabby_Api($request['merchant_code']))->request('checkout', 'POST', $request);
 
             if ($result && property_exists($result, 'status') && $result->status == 'created') {
                 $available_products = $result->configuration->available_products;
@@ -523,13 +530,13 @@ class WC_Gateway_Tabby_Checkout_Base extends WC_Payment_Gateway {
             $this->ddlog("error", "could not process payment", $e);
         }
     }
-    public function update_payment_reference_id($payment_id, $reference_id) {
+    public function update_payment_reference_id($order, $payment_id, $reference_id) {
         $request = [
             'order' => [
                 'reference_id'  => (string)$reference_id
             ]
         ];
-        return $this->request($payment_id, 'PUT', $request);
+        return $this->request($order, $payment_id, 'PUT', $request);
     }
     protected function getTabbyRedirectUrl($order) {
         // create payment object
@@ -544,7 +551,7 @@ class WC_Gateway_Tabby_Checkout_Base extends WC_Payment_Gateway {
         $request['payment']['buyer'] = $config['buyer'];
         $request['payment']['buyer_history'] = $config['buyer_history'];
         $request['payment']['shipping_address'] = $config['shipping_address'];
-        $result = WC_Tabby_Api::request('checkout', 'POST', $request);
+        $result = (new WC_Tabby_Api($request['merchant_code']))->request('checkout', 'POST', $request);
 
         if ($result && property_exists($result, 'status') && $result->status == 'created') {
             if (property_exists($result->configuration->available_products, static::TABBY_METHOD_CODE)) {
@@ -619,7 +626,7 @@ class WC_Gateway_Tabby_Checkout_Base extends WC_Payment_Gateway {
 
           // cache payment to avoid duplicate api queries
           if (!array_key_exists($payment_id, self::$payments)) {
-            $res = $this->request($payment_id);
+            $res = $this->request($order, $payment_id);
             self::$payments[$payment_id] = $res;
           } else {
             $res = self::$payments[$payment_id];
@@ -635,7 +642,7 @@ class WC_Gateway_Tabby_Checkout_Base extends WC_Payment_Gateway {
                     "reference_id"  => (string)woocommerce_tabby_get_order_reference_id($order)
                 ]];
 
-                $result = $this->request($payment_id, 'PUT', $data);
+                $result = $this->request($order, $payment_id, 'PUT', $data);
                 $this->debug(['authorize - update order #  - ', (array)$result]);
               }
 
@@ -683,7 +690,7 @@ class WC_Gateway_Tabby_Checkout_Base extends WC_Payment_Gateway {
         return false;
     }
     public function is_payment_expired($order, $payment_id) {
-        $res = $this->request($payment_id);
+        $res = $this->request($order, $payment_id);
         $timeout = get_option( 'tabby_checkout_order_timeout' );
         if ($res && $res->created_at && (time() - strtotime($res->created_at) > $timeout * 60)) {
             $this->ddlog("info", "payment is expired", null, [
@@ -743,7 +750,7 @@ class WC_Gateway_Tabby_Checkout_Base extends WC_Payment_Gateway {
 
 
               $this->debug(['capture', $payment_id, $data]);
-              $result = $this->request($payment_id . '/captures', 'POST', $data);
+              $result = $this->request($order, $payment_id . '/captures', 'POST', $data);
               $this->debug(['capture - result', (array)$result]);
 
               if (property_exists($result, 'captures') && is_array($result->captures)) {
@@ -804,7 +811,7 @@ class WC_Gateway_Tabby_Checkout_Base extends WC_Payment_Gateway {
             );
             $this->ddlog("info", "cancel payment", null, $logData);
 
-            $this->request($payment_id . '/close', 'POST');
+            $this->request($order, $payment_id . '/close', 'POST');
             $order->update_meta_data(static::TABBY_STATUS_FIELD, static::STATUS_CLOSED);
             $order->add_order_note(__( 'Tabby payment closed', 'tabby-checkout' ));
             $order->save();
@@ -832,7 +839,7 @@ class WC_Gateway_Tabby_Checkout_Base extends WC_Payment_Gateway {
     public function get_tabby_payment($order) {
         $payment_id = $this->get_tabby_payment_id($order);
 
-        return $this->request($payment_id);
+        return $this->request($order, $payment_id);
     }
 
     public function process_refund( $order_id, $amount = null, $reason = '' ) {
@@ -878,7 +885,7 @@ class WC_Gateway_Tabby_Checkout_Base extends WC_Payment_Gateway {
               ];
           }
           $this->debug(['refund', $payment_id, $data]);
-          $result = $this->request($payment_id . '/refunds', 'POST', $data);
+          $result = $this->request($order, $payment_id . '/refunds', 'POST', $data);
           $this->debug(['refund - result', (array)$result]);
 
           $txn = array_pop($result->refunds);
@@ -906,8 +913,9 @@ class WC_Gateway_Tabby_Checkout_Base extends WC_Payment_Gateway {
         return number_format($amount, wc_get_price_decimals(), '.', '');
     }
 
-    public function request($endpoint, $method = 'GET', $data = null) {
-        return WC_Tabby_Api::request('payments/' . $endpoint, $method, $data);
+    public function request($order, $endpoint, $method = 'GET', $data = null) {
+        $country = WC_Tabby_Config::getMerchantCode($order);
+        return (new WC_Tabby_Api($country))->request('payments/' . $endpoint, $method, $data);
     }
 
     protected function debug($data) {

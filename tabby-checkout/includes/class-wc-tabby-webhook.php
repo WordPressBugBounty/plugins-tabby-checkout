@@ -45,19 +45,18 @@ class WC_Tabby_Webhook {
     public static function registerWebhook($code, $url) {
         $data = ['url' => $url, 'is_test' => static::getIsTest()];
         static::ddlog("info", "Registering webhook", null, $data);
-        return WC_Tabby_Api::request('webhooks', 'POST', $data, $code);
+        return (new WC_Tabby_Api($code))->request('webhooks', 'POST', $data, $code);
     }
     public static function updateWebhook($hook, $code, $url) {
         $data = ['url' => $url, 'is_test' => static::getIsTest()];
         static::ddlog("info", "Updating webhook", null, $data);
-        return WC_Tabby_Api::request('webhooks/' . $hook->id, 'PUT', $data, $code);
+        return (new WC_Tabby_Api($code))->request('webhooks/' . $hook->id, 'PUT', $data, $code);
     }
     public static function deleteWebhook($hook, $code) {
-        static::ddlog("info", "Deleting webhook", null, $hook);
-        return WC_Tabby_Api::request('webhooks/' . $hook->id, 'DELETE', null, $code);
+        return (new WC_Tabby_Api($code))->request('webhooks/' . $hook->id, 'DELETE', null, $code);
     }
     public static function getWebhooks($code) {
-        return WC_Tabby_Api::request('webhooks', 'GET', null, $code);
+        return (new WC_Tabby_Api($code))->request('webhooks', 'GET', null, $code);
     }
     public static function getIsTest() {
         return (bool)preg_match('#^sk_test#', WC_Tabby_Api::get_api_option('secret_key'));

@@ -166,6 +166,7 @@ class TabbyRenderer {
 
         var data = {
             buyer: this.buyer,
+            key: tabbyConfig.order_key,
             security: wc_checkout_params.get_prescoring_data_nonce
         };
 

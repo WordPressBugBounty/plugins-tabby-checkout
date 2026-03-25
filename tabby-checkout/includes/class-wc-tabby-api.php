@@ -1,7 +1,12 @@
 <?php
 class WC_Tabby_Api {
-    const API_URI = 'https://'.TABBY_CHECKOUT_API_DOMAIN.'/api/v1/';
-    const API2_URI = 'https://'.TABBY_CHECKOUT_API_DOMAIN.'/api/v2/';
+
+    var $country = 'AE';
+    var $version = '2';
+
+    public function __construct($country) {
+        $this->country = $country;
+    }
 
     public static function needs_setup() {
         if (static::get_api_option('public_key') && static::get_api_option('secret_key')) {
@@ -18,8 +23,17 @@ class WC_Tabby_Api {
     public static function get_api_option($option, $default = null) {
         return get_option('tabby_checkout_' . $option, $default);
     }
+    public function get_endpoint_url($endpoint = '') {
+        $version = $this->version;
 
-    public static function request($endpoint, $method = 'GET', $data = null, $merch_code = null) {
+        if (substr($endpoint, 0, 8) == 'webhooks') {
+            $version = 1;
+        }
+
+        return sprintf("https://api.%s/api/v%s/%s", WC_Tabby_Config::get_tabby_domain($this->country), $version, $endpoint);
+    }
+
+    public function request($endpoint, $method = 'GET', $data = null, $merch_code = null) {
 
         if (!static::get_api_option('secret_key')) {
             return null;
@@ -27,12 +41,7 @@ class WC_Tabby_Api {
 
         $client = new \WP_Http();
 
-
-        $url = static::API2_URI . $endpoint;
-
-        if ($endpoint == 'webhooks') {
-            $url = static::API_URI . $endpoint;
-        }
+        $url = $this->get_endpoint_url($endpoint);
 
         $args = array();
         $args['timeout'] = 60;
@@ -60,7 +69,7 @@ $er = error_reporting(E_ERROR);
             "request.method"    => $args["method"],
             "request.headers"   => $args["headers"],
             "response.body"     => is_wp_error($response) ? '' : $response["body"],
-            "response.status"   => is_wp_error($response) ? '' : $response["response"]["code"],
+            "response.status"   => is_wp_error($response) ? 'error' : $response["response"]["code"],
             "response.error"    => is_wp_error($response) ? $response->get_error_message() : ''
         );
 error_reporting($er);
@@ -70,7 +79,8 @@ error_reporting($er);
         static::debug(['response', (array)$response]);
 
         if (is_wp_error($response)) {
-            throw new \Exception( $response->get_error_message() );
+            //throw new \Exception( $response->get_error_message() );
+            return new \StdClass();
         }
 
         switch ($response['response']['code']) {

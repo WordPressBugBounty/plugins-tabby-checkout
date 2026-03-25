@@ -3,7 +3,7 @@ Contributors: tabbyai
 Tags: tabby, tabby plugin, tabby checkout, bnpl, tabby bnpl
 Requires at least: 5.7
 Tested up to: 6.9
-Stable tag: 5.9.2
+Stable tag: 5.10.3
 Requires PHP: 7.0
 License: GPLv3
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
@@ -27,6 +27,10 @@ customers by offering easy and flexible payments online and in stores. Tabby
 currently operates in Saudi Arabia, UAE, Kuwait, Bahrain and Egypt.
 
 == Changelog ==
+
+= 5.10.3 =
+
+* Separate domain for KSA payments.
 
 = 5.9.2 =
 

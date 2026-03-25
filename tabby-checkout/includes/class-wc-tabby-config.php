@@ -1,9 +1,16 @@
 <?php
 
 class WC_Tabby_Config {
-    const ALLOWED_CURRENCIES = ['AED','SAR','BHD','KWD', 'QAR'];
-    const ALLOWED_COUNTRIES  = [ 'AE', 'SA', 'BH', 'KW',  'QA'];
+    const ALLOWED_CURRENCIES = ['AED','SAR','KWD'];
+    const ALLOWED_COUNTRIES  = [ 'AE', 'SA', 'KW'];
 
+    public static function get_tabby_domain($mcode = null) {
+        if (is_null($mcode)) $mcode = static::getPromoMerchantCode();
+        $dev = defined('TABBY_DEV_DOMAINS');
+        $d2 = ($mcode == 'SA' && $dev ? 'tabbysa' : 'tabby');
+        $d1 = (defined('TABBY_DEV_DOMAINS') ? 'dev' : ($mcode == 'SA' ? 'sa' : 'ai'));
+        return $d2 . '.' . $d1;
+    }
     public static function getDefaultMerchantCode() {
         $currency_code = static::getTabbyCurrency();
 

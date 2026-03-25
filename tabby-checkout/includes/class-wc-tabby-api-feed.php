@@ -1,7 +1,6 @@
 <?php
 
 class WC_Tabby_Api_Feed {
-    const API_URI = 'https://' . TABBY_FEED_API_DOMAIN . '/webhooks/v1/tabby/';
     const TABBY_CHECKOUT_FEED_TOKEN_OPTION = 'tabby_checkout_feed_token';
     const TABBY_CHECKOUT_FEED_CRED_OPTION = 'tabby_checkout_feed_cred';
     const TABBY_CHECKOUT_FEED_REG_ATTEMPT = 'tabby_checkout_feed_reg_attempt';
@@ -22,6 +21,7 @@ class WC_Tabby_Api_Feed {
     }
     public function uninstall() {
         if (!static::isRegistered()) {
+            delete_option(self::TABBY_CHECKOUT_FEED_REG_ATTEMPT);
             return true;
         }
         // check if there is previous uninstall attempt
@@ -110,6 +110,10 @@ class WC_Tabby_Api_Feed {
     private static function getMerchantCode() {
         return WC_Tabby_Config::getDefaultMerchantCode();
     }
+
+    private function get_api_url($country) {
+        return sprintf('https://plugins-api.%s/webhooks/v1/tabby/', WC_Tabby_Config::get_tabby_domain($country));
+    }
     public function request($endpoint, $method = 'GET', $data = []) {
         if (!$this->getSecretKey()) {
             WC_Tabby_Api::ddlog("info", "Secret key not set, ignore request", null, []);
@@ -132,7 +136,7 @@ class WC_Tabby_Api_Feed {
 
         $client = new \WP_Http();
 
-        $url = static::API_URI . $endpoint;
+        $url = $this->get_api_url($this->getMerchantCode()) . $endpoint;
 
         $args = array();
         $args['timeout'] = 60;
@@ -163,7 +167,7 @@ class WC_Tabby_Api_Feed {
             "request.method"    => $args["method"],
             "request.headers"   => $args["headers"],
             "response.body"     => is_wp_error($response) ? '' : $response["body"],
-            "response.status"   => is_wp_error($response) ? '' : $response["response"]["code"],
+            "response.status"   => is_wp_error($response) ? 'error' : $response["response"]["code"],
             "response.error"    => is_wp_error($response) ? $response->get_error_message() : ''
         );
         error_reporting($er);
@@ -173,7 +177,8 @@ class WC_Tabby_Api_Feed {
         $result = [];
 
         if (is_wp_error($response)) {
-            throw new \Exception( $response->get_error_message() );
+            //throw new \Exception( $response->get_error_message() );
+            return new \StdClass();
         }
 
         switch ($response['response']['code']) {

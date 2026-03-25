@@ -13,23 +13,26 @@ class WC_Tabby_Promo {
             // css
             wp_enqueue_style('tabby-checkout', plugins_url('css/tabby.css', dirname(__FILE__)));
             // js
-            wp_enqueue_script('tabby-checkout-integration', 'https://'.TABBY_CHECKOUT_DOMAIN.'/tabby-card.js', [], null, true);
+            wp_enqueue_script('tabby-checkout-integration', 'https://'.self::get_tabby_promo_domain().'/tabby-card.js', [], null, true);
             if (WC_Gateway_Tabby_Checkout_Base::is_classic_checkout_enabled()) {
                 wp_enqueue_script('tabby-checkout-tabby-js', plugins_url('js/tabby.js', dirname(__FILE__)), [], MODULE_TABBY_CHECKOUT_VERSION, true);
             }
         };
 
         if ((is_product() || is_cart()) && static::is_tabby_promo_enabled()) {
-            wp_enqueue_script('tabby-checkout-promo', 'https://'.TABBY_CHECKOUT_DOMAIN.'/tabby-promo.js', [], null, true);
+            wp_enqueue_script('tabby-checkout-promo', 'https://'.self::get_tabby_promo_domain().'/tabby-promo.js', [], null, true);
             if (!static::is_blocks_cart_enabled() || is_product()) {
                 static::product_promotion_scripts();
             }
         };
     }
+    public static function get_tabby_promo_domain() {
+        return 'checkout.' . WC_Tabby_Config::get_tabby_domain(self::getMerchantCode());
+    }
     public static function admin_enqueue_scripts() {
         $current_screen = get_current_screen();
         if (method_exists($current_screen, 'is_block_editor') && $current_screen->is_block_editor()) {
-            wp_enqueue_script('tabby-checkout-promo', 'https://'.TABBY_CHECKOUT_DOMAIN.'/tabby-promo.js', [], null, true);
+            wp_enqueue_script('tabby-checkout-promo', 'https://'.self::get_tabby_promo_domain().'/tabby-promo.js', [], null, true);
         }
     }
     public static function is_tabby_promo_enabled() {

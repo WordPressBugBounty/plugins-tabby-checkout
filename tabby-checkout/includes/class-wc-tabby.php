@@ -91,6 +91,7 @@ class WC_Tabby {
         if ($transaction_id = (array_key_exists('transaction_id', $context->payment_data) ? $context->payment_data['transaction_id'] : false)) {
             $gateway->update_order_payment_id($context->order, $transaction_id);
             $res = $gateway->update_payment_reference_id(
+                $context->order,
                 $transaction_id,
                 woocommerce_tabby_get_order_reference_id($context->order)
             );
@@ -113,6 +114,7 @@ class WC_Tabby {
         if ($order->get_transaction_id()) {
             $gateway->update_order_payment_id($order, $order->get_transaction_id());
             $gateway->update_payment_reference_id(
+                $order,
                 $order->get_transaction_id(),
                 woocommerce_tabby_get_order_reference_id($order)
             );

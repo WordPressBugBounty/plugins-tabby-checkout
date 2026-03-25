@@ -13,6 +13,7 @@ class WC_Tabby_AJAX {
     }
     public static function query_vars( $vars ) {
         $vars[] = 'buyer';
+        $vars[] = 'key';
         return $vars;
     }
     public static function get_prescoring_data() {
@@ -21,7 +22,14 @@ class WC_Tabby_AJAX {
 
         $gateway = new WC_Gateway_Tabby_Checkout_Base();
 
-        $config = json_decode($gateway->getTabbyConfig(), true);
+        $order = null;
+        if ($order_key = get_query_var('key', false)) {
+            if ($order_id = wc_get_order_id_by_order_key( $order_key )) {
+                $order = wc_get_order($order_id);
+            }
+        }
+
+        $config = json_decode($gateway->getTabbyConfig($order), true);
 
         $request = [
             'lang'          => $config['locale'],
@@ -133,7 +141,7 @@ class WC_Tabby_AJAX {
             $items[] = [
                 "quantity"      => $item->get_quantity(),
                 "title"         => $item->get_name(),
-                "unit_price"    => $order->get_item_total($item, true),
+                "unit_price"    => (string)$order->get_item_total($item, true),
                 "reference_id"  => '' . $item->get_product_id() .
                         ( $item->get_variation_id() ? '|' . $item->get_variation_id() : '' ),
                 "ordered"       => $item->get_quantity(),
