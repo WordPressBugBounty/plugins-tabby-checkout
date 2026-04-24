@@ -122,7 +122,12 @@ class WC_Tabby_Feed_Product {
         $result = [];
         foreach ($product->get_attributes() as $code => $attribute) {
             if (is_object($attribute)) {
-                $values = array_map(function ($item) {return (string)$item;}, array_values($attribute->get_options()));
+                $values = $attribute->is_taxonomy()
+                    ? array_filter(array_map(function ($term_id) use ($attribute) {
+                        $term = get_term($term_id, $attribute->get_name());
+                        return $term && !is_wp_error($term) ? $term->name : null;
+                    }, $attribute->get_options()))
+                    : array_map(function ($item) {return (string)$item;}, array_values($attribute->get_options()));
                 if (!empty($values)) {
                     $result[] = [
                         'name'      => $attribute->get_name(),
