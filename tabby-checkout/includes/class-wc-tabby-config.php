@@ -43,7 +43,10 @@ class WC_Tabby_Config {
     }
     // Disabled for SKUs
     public static function isEnabledForProductSKU() {
-        return !static::isDisabledForSku(wc_get_product()->get_sku());
+        if (wc_get_product()) {
+            return !static::isDisabledForSku(wc_get_product()->get_sku());
+        }
+        return false;
     }
     public static function isEnabledForCartSKUs() {
         if (WC()->cart) {

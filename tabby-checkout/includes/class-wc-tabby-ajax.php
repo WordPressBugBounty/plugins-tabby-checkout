@@ -29,7 +29,7 @@ class WC_Tabby_AJAX {
             }
         }
 
-        $config = json_decode($gateway->getTabbyConfig($order), true);
+        $config = json_decode($gateway->getTabbyConfig($order, false), true);
 
         $request = [
             'lang'          => $config['locale'],
@@ -48,13 +48,8 @@ class WC_Tabby_AJAX {
                 $request['payment']['buyer']['phone'] = $buyer['phone'];
             }
         }
-        $request['payment']['buyer_history'] = $config['buyer_history'];
-        $request['payment']['shipping_address'] = $config['shipping_address'];
 
-        $request['payment']['order_history'] = self::getOrderHistoryObject(
-            $request['payment']['buyer']['email'],
-            $request['payment']['buyer']['phone']
-        );
+        $request['payment']['shipping_address'] = $config['shipping_address'];
 
         $available_products = $gateway->get_cached_availability_request($request);
 

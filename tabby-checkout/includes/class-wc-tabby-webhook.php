@@ -2,7 +2,40 @@
 require_once (__DIR__ . '/class-wc-rest-tabby-controller.php');
 
 class WC_Tabby_Webhook {
+    private const CRON_JOB_NAME = 'tabby_webhook_service';
+    public static function init() {
+        add_action(self::CRON_JOB_NAME, [__CLASS__, 'cron_service']);
+        //add_filter( 'action_scheduler_groups', [__CLASS__, 'wc_custom_register_action_group'] );
+
+        add_action('action_scheduler_init', function () {
+            // once at 33 page loads
+            if (mt_rand(1, 1000) < 31) {
+                static::registerCronJob();
+            }
+        });
+    }
+    public static function wc_custom_register_action_group( $groups ) {
+        $groups['tabby-checkout'] = __( 'Tabby', 'textdomain' );
+        return $groups;
+    }
+    public static function registerCronJob() {
+        // use Woo scheduled action
+        if ( false === as_next_scheduled_action( self::CRON_JOB_NAME ) ) {
+            as_schedule_recurring_action( time(), 3600 * 6, self::CRON_JOB_NAME, array(), 'tabby-checkout');
+        }
+    }
+    public static function unregisterCronJob() {
+        // use Woo scheduled action
+        as_unschedule_all_actions(self::CRON_JOB_NAME);
+    }
+    public static function cron_service() {
+        if (!WC_Tabby_Api::needs_setup()) {
+            static::register();
+        }
+    }
     public static function register() {
+        static::registerCronJob();
+
         if (WC_Tabby_Api::needs_setup()) {
             static::ddlog("warn", "Tabby is not configured, but webhook 'register' called. Possible first module installation.");
             return;
@@ -62,6 +95,7 @@ class WC_Tabby_Webhook {
         return (bool)preg_match('#^sk_test#', WC_Tabby_Api::get_api_option('secret_key'));
     }
     public static function unregister() {
+        static::unregisterCronJob();
         if (WC_Tabby_Api::needs_setup()) {
             static::ddlog("warn", "Tabby is not configured, but webhook 'unregister' called. Possible wrong module configuration.");
             return;

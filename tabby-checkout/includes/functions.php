@@ -61,7 +61,7 @@ function tabby_thankyou_order_id($order_id) {
         $lock = new WC_Tabby_Lock();
         if ($lock->lock($order_id)) {
             $order = wc_get_order( $order_id );
-            if ($order->has_status('pending')) WC_Tabby_Cron::tabby_check_order_paid_real(true, $order, 'thank you page');
+            if ($order && $order->has_status('pending')) WC_Tabby_Cron::tabby_check_order_paid_real(true, $order, 'thank you page');
             $lock->unlock($order_id);
         }
     }

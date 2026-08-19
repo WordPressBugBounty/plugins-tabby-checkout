@@ -6,6 +6,7 @@ use Automattic\WooCommerce\StoreApi\Payments\PaymentResult;
 
 class WC_Tabby {
     public static function init() {
+        WC_Tabby_Webhook::init();
         WC_Settings_Tab_Tabby::init();
         WC_Tabby_AJAX::init();
         WC_Tabby_Promo::init();

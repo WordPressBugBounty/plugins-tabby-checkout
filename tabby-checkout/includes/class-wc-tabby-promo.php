@@ -184,9 +184,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Gets order total from "pay for order" page.
         if ( 0 < $order_id ) {
-            $order = wc_get_order( $order_id );
-            $total = (float) $order->get_total();
-
+            if ($order = wc_get_order( $order_id )) {
+                $total = (float) $order->get_total();
+            }
             // Gets order total from cart/checkout.
         } elseif ( WC()->cart ) {
             $total = (float) WC()->cart->total;

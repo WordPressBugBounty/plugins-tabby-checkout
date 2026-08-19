@@ -242,7 +242,7 @@ class WC_Gateway_Tabby_Checkout_Base extends WC_Payment_Gateway {
             'notAvailableMessage' => __('Sorry Tabby is unable to approve this purchase, please use an alternative payment method for your order.', 'tabby-checkout'),
         ];
     }
-    public function getTabbyConfig($order = null) {
+    public function getTabbyConfig($order = null, $with_history = true) {
         $config = $this->getFrontTabbyConfig();
         $config['apiKey']  = $this->get_api_option('public_key');
         $config['merchantCode'] = WC_Tabby_Config::getMerchantCode($order);
@@ -259,16 +259,16 @@ class WC_Gateway_Tabby_Checkout_Base extends WC_Payment_Gateway {
             $customer = new \WC_Customer($order->get_customer_id());
             $config['buyer'] = $this->getBuyerObject($order);
             $config['shipping_address'] = $this->getShippingAddressObject($order);
-            $config['buyer_history'] = $this->getBuyerHistoryObject($customer);
+            $config['buyer_history'] = $with_history ? $this->getBuyerHistoryObject($customer) : null;
         } elseif ($order) {
             $customer = new \WC_Customer($order->get_customer_id());
             $config['buyer'] = $this->getBuyerObject($order);
             $config['shipping_address'] = $this->getShippingAddressObject($order);
-            $config['buyer_history'] = $this->getBuyerHistoryObject($customer);
+            $config['buyer_history'] = $with_history ? $this->getBuyerHistoryObject($customer) : null;
         } elseif ($customer = WC()->customer) {
             $config['buyer'] = $this->getFrontBuyerObject();
             $config['shipping_address'] = $this->getShippingAddressObject($customer);
-            $config['buyer_history'] = $this->getBuyerHistoryObject($customer);
+            $config['buyer_history'] = $with_history ? $this->getBuyerHistoryObject($customer) : null;
         }
         $config['payment'] = $this->getPaymentObject($order);
         $config['merchantUrls'] = WC_Tabby_Config::getMerchantUrls($order);
@@ -316,27 +316,20 @@ class WC_Gateway_Tabby_Checkout_Base extends WC_Payment_Gateway {
     }
 
     public static function is_classic_checkout_enabled() {
-        if ($checkout_id = get_option('woocommerce_checkout_page_id', false)) {
-            $checkout = get_post($checkout_id);
-            if (preg_match("/wp:woocommerce\/classic-shortcode|\[woocommerce_checkout\]/is", $checkout->post_content)) {
-                // old checkout enabled
-                return true;
-            };
-        };
-        return false;        
+        if ( class_exists( 'WC_Blocks_Utils' ) && WC_Blocks_Utils::has_block_in_page( wc_get_page_id( 'checkout' ), 'woocommerce/checkout' ) ) {
+            // The site is using the modern BLOCK checkout
+            return false;
+        }
+        // The site is using the CLASSIC shortcode checkout
+        return true;
     }
     public function get_is_available_from_api() {
-        $config = json_decode(static::getTabbyConfig(), true);
+        $config = json_decode(static::getTabbyConfig(null, false), true);
         // show module on checkout if there is no email/phone entered
         if (empty($config['buyer']['email']) || empty($config['buyer']['phone'])) {
             return true;
         }
         $config['payment']['buyer'] = $this->getFrontBuyerObject();
-        $config['payment']['order_history'] = WC_Tabby_AJAX::getOrderHistoryObject(
-            $config['payment']['buyer']['email'],
-            $config['payment']['buyer']['phone']
-        );
-        $config['payment']['buyer_history'] = $config['buyer_history'];
         $config['payment']['shipping_address'] = $config['shipping_address'];
         $modules = [];
         $request = [
@@ -418,14 +411,12 @@ class WC_Gateway_Tabby_Checkout_Base extends WC_Payment_Gateway {
         return [
             "amount"            => $this->formatAmount($this->get_order_total($order)),
             "currency"          => WC_Tabby_Config::getTabbyCurrency(),
-            //"buyer_history"   => $this->getBuyerHistoryObject(),
             "description"       => get_bloginfo("name") . ' Order',
             "order"             => $this->getOrderObject($order),
             "meta"              => [
                 "tabby_plugin_platform" => 'woocommerce',
                 "tabby_plugin_version"  => MODULE_TABBY_CHECKOUT_VERSION
             ],
-            //"shipping_address"    => $this-> getShippingAddressObject()
         ];
     }
 
@@ -485,12 +476,34 @@ class WC_Gateway_Tabby_Checkout_Base extends WC_Payment_Gateway {
                 }
             }
         }
+        $brand_name = null;
+        if (function_exists('wc_get_product_brands')) {
+            $brands = wc_get_product_brands($_product->get_id());
+            if (!empty($brands)) {
+                foreach ($brands as $brand) {
+                    $brand_name = $brand->name;
+                    break;
+                }
+            }
+        }
+
+        if (is_null($brand_name)) {
+            $brands = get_the_terms( $product_id, 'product_brand' );
+            if ( ! is_wp_error( $brands ) && ! empty( $brands ) ) {
+                foreach ( $brands as $brand ) {
+                    $brand_name = $brand->name;
+                    break;
+                }
+            }
+        }
+        $sku = $_product->get_sku();
 
         return [
             'quantity'      => (int)$quantity,
             'title'         => $_product->get_title(),
             'category'      => $category,
-            'reference_id'  => '' . $_product->get_id(),
+            'reference_id'  => (string) ($sku ?: $_product->get_id()),
+            'brand'         => $brand_name,
             'description'   => $_product->get_description(),
             'image_url'     => $image_id ? wp_get_attachment_image_url( $image_id, 'full') : wc_placeholder_img_src( 'full' ),
             'product_url'   => get_permalink( $_product->get_id() ),
@@ -692,7 +705,7 @@ class WC_Gateway_Tabby_Checkout_Base extends WC_Payment_Gateway {
     public function is_payment_expired($order, $payment_id) {
         $res = $this->request($order, $payment_id);
         $timeout = get_option( 'tabby_checkout_order_timeout' );
-        if ($res && $res->created_at && (time() - strtotime($res->created_at) > $timeout * 60)) {
+        if ($res && property_exists($res, 'created_at') && (time() - strtotime($res->created_at) > $timeout * 60)) {
             $this->ddlog("info", "payment is expired", null, [
                 'payment.id'    => $payment_id,
                 'created_at'    => $res->created_at,

@@ -73,7 +73,7 @@ class WC_Tabby_Cron {
                 if ($lock->lock($unpaid_order)) {
                     $order = wc_get_order( $unpaid_order );
     
-                    if ( $order->has_status('pending') && static::tabby_check_order_paid_real( 'checkout' === $order->get_created_via(), $order )) {
+                    if ( $order && $order->has_status('pending') && static::tabby_check_order_paid_real( 'checkout' === $order->get_created_via(), $order )) {
                         // restock order
                         $order->update_status( 'cancelled', __( 'Tabby unpaid order cancelled - time limit reached.', 'tabby-checkout' ) );
                         // delete order
