@@ -42,14 +42,16 @@ class WC_Tabby_Webhook {
         }
         // get webhook url
         $url = WC_REST_Tabby_Controller::getEndpointUrl();
-        static::ddlog("info", "Checking webhook is registered.", null, ['url' => $url]);
-        
+
         // request all webhooks
         foreach (WC_Tabby_Config::getConfiguredCountries() as $country) {
+            // the key is not allowed for this country: do not ask again for a day (or until the keys change)
+            if (static::isCachedNotAuthorized($country)) continue;
             // get list of registered hooks
             $hooks = static::getWebhooks($country);
             // bypass not authorized errors
-            if (static::isNotAuthorized($hooks)) {
+            if (static::isNotAuthorized($hooks) || (int)WC_Tabby_Api::$last_status === 401) {
+                static::cacheNotAuthorized($country);
                 static::ddlog("info", "Store code not authorized for merchant", null, ['code' => $country]);
                 continue;
             }
@@ -70,6 +72,15 @@ class WC_Tabby_Webhook {
                 static::registerWebhook($country, $url);
             }
         }
+    }
+    protected static function notAuthorizedKey($country) {
+        return 'tabby_webhook_na_' . $country . '_' . substr(hash('sha256', (string)WC_Tabby_Api::get_api_option('secret_key')), 0, 12);
+    }
+    public static function isCachedNotAuthorized($country) {
+        return false !== get_transient(static::notAuthorizedKey($country));
+    }
+    public static function cacheNotAuthorized($country) {
+        set_transient(static::notAuthorizedKey($country), 1, DAY_IN_SECONDS);
     }
     public static function isNotAuthorized($response) {
         if (is_object($response) && property_exists($response, 'errorType') && in_array($response->errorType, ['not_authorized', 'not_found'])) return true;
@@ -102,7 +113,6 @@ class WC_Tabby_Webhook {
         }
         // get webhook url
         $url = WC_REST_Tabby_Controller::getEndpointUrl();
-        static::ddlog("info", "unregister: Checking webhook is registered.", null, ['url' => $url]);
         
         // request all webhooks
         foreach (WC_Tabby_Config::ALLOWED_COUNTRIES as $country) {

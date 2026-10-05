@@ -12,6 +12,7 @@ class WC_Tabby {
         WC_Tabby_Promo::init();
         WC_Tabby_Cron::init();
         WC_REST_Tabby_Controller::init();
+        WC_Tabby_Analytics::init();
 
         static::init_methods();
 

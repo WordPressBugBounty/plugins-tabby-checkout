@@ -3,18 +3,20 @@
  * Plugin Name: Tabby Checkout
  * Plugin URI: https://tabby.ai/
  * Description: Tabby Checkout
- * Version: 5.13.3
+ * Version: 5.16.0
  * Author: Tabby
  * Author URI: https://tabby.ai
- * License: GPLv2
+ * License: MIT
+ * License URI: https://opensource.org/licenses/MIT
  * Requires Plugins: woocommerce
+ * Requires PHP: 7.4
  * Text Domain: tabby-checkout
  * Domain Path: /i18n/languages/
  */
 
 defined( 'ABSPATH' ) || exit;
 
-define ('MODULE_TABBY_CHECKOUT_VERSION', '5.13.3');
+define ('MODULE_TABBY_CHECKOUT_VERSION', '5.16.0');
 
 //define ('TABBY_DEV_DOMAINS', true);
 

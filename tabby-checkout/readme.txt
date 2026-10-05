@@ -3,10 +3,10 @@ Contributors: tabbyai
 Tags: tabby, tabby plugin, tabby checkout, bnpl, tabby bnpl
 Requires at least: 5.7
 Tested up to: 7.1
-Stable tag: 5.13.3
-Requires PHP: 7.0
-License: GPLv3
-License URI: https://www.gnu.org/licenses/gpl-3.0.html
+Stable tag: 5.16.0
+Requires PHP: 7.4
+License: MIT
+License URI: https://opensource.org/licenses/MIT
 
 Boost your business with Tabby
 
@@ -24,9 +24,40 @@ Why Tabby:
 Who uses Tabby
 Global brands and small businesses use Tabby to accelerate growth and gain loyal
 customers by offering easy and flexible payments online and in stores. Tabby
-currently operates in Saudi Arabia, UAE, Kuwait, Bahrain and Egypt.
+currently operates in Saudi Arabia and UAE.
+
+== External services ==
+
+This plugin connects to the following services:
+
+* Tabby API (api.tabby.ai, api.tabby.sa) - creates and manages Tabby payments for orders paid with Tabby. Data sent: order amount, currency, items, buyer contact details needed for the payment. Sent when a buyer checks out with Tabby and when the order is captured, cancelled or refunded.
+* Tabby product feed (plugins-api.tabby.ai, plugins-api.tabby.sa) - shares the product catalogue with Tabby Marketplace when "List products on Tabby Marketplace" is enabled.
+* Datadog (logs.browser-intake-datadoghq.eu) - technical logs of the plugin's Tabby API calls and, when "Share store insights" is enabled, anonymised order statistics (products, categories, order totals and payment method). No customer names, emails, phones or addresses are sent; secret keys are masked.
+
+Tabby terms: https://tabby.ai/en-AE/terms-and-conditions - Tabby privacy policy: https://tabby.ai/en-AE/privacy-policy - Datadog privacy policy: https://www.datadoghq.com/legal/privacy/
 
 == Changelog ==
+
+= 5.16.0 =
+
+* Store insights simplified: order placed, status change and refund events with the basket inside; no daily summaries or history upload
+* The order confirmation page also accepts the Tabby payment id from the return link, for themes with custom thank-you pages
+* An empty Tabby countries selection keeps Tabby off at checkout, as before 5.14.0
+* Log fixes: Arabic text in error responses no longer breaks log delivery, customer first and last names masked
+
+= 5.15.0 =
+
+* Store insights setting (order statistics for Tabby Marketplace), enabled by default and can be switched off in Tabby API settings
+* Lighter logging: one log request per page load instead of one per entry, fewer repeated webhook and product feed log entries, customer details masked in logs
+* Tabby payments are confirmed on the order confirmation page of block themes too (previously only via webhook or the timeout job)
+* The order confirmation page checks the Tabby payment only for the buyer's own order (order key in the return link)
+* Webhook registration no longer retries countries the API key is not enabled for more than once a day
+* MIT license
+* Requires PHP 7.4 or newer (the minimum of current WooCommerce)
+
+= 5.14.0 =
+
+* Unsupported countries/currencies removed
 
 = 5.13.3 =
 
@@ -207,7 +238,6 @@ currently operates in Saudi Arabia, UAE, Kuwait, Bahrain and Egypt.
 
 = 3.2.4 =
 
-* Egypt country/currency codes support
 * Return Tabby redirect url regardless request type ajax or not
 * Fix warning on checkout
 * Fix promotion initial price for variation products

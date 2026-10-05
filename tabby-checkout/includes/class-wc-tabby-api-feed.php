@@ -5,7 +5,7 @@ class WC_Tabby_Api_Feed {
     const TABBY_CHECKOUT_FEED_CRED_OPTION = 'tabby_checkout_feed_cred';
     const TABBY_CHECKOUT_FEED_REG_ATTEMPT = 'tabby_checkout_feed_reg_attempt';
     const TABBY_CHECKOUT_FEED_UNREG_ATTEMPT = 'tabby_checkout_feed_unreg_attempt';
-    const TABBY_CHECKOUT_FEED_CODES = ['AE', 'SA', 'KW'];
+    const TABBY_CHECKOUT_FEED_CODES = ['AE', 'SA'];
 
     public static function canOperate() {
         // only for production keys
@@ -73,7 +73,11 @@ class WC_Tabby_Api_Feed {
                 $data['msg'] = "Custom logo not set";
             }
 
-            WC_Tabby_Api::ddlog("info", "Feed registration failed", null, $data);
+            // the gateway answers the same way for hours (e.g. registration paused): log once a day
+            if (false === get_transient('tabby_feed_reg_failed_logged')) {
+                set_transient('tabby_feed_reg_failed_logged', 1, DAY_IN_SECONDS);
+                WC_Tabby_Api::ddlog("info", "Feed registration failed", null, $data);
+            }
         }
 
         return false;
@@ -128,8 +132,7 @@ class WC_Tabby_Api_Feed {
         if (strstr($this->getSecretKey(), 'sk_test_') !== false) {
             WC_Tabby_Api::ddlog("info", "Test credentials, ignore request", null, [
                 'endpoint'  => $endpoint,
-                'method'    => $method,
-                'data'      => $data
+                'method'    => $method
             ]);
             return false;
         }
@@ -172,7 +175,14 @@ class WC_Tabby_Api_Feed {
         );
         error_reporting($er);
 
-        WC_Tabby_Api::ddlog("info", "feed api: " . $endpoint, null, $logData);
+        // success is the normal case (1M+ lines a week fleet-wide): log failures only, never the register body
+        $feed_failed = is_wp_error($response)
+            || (int)$response["response"]["code"] >= 300
+            || (is_object($decoded = json_decode($response["body"])) && property_exists($decoded, 'errors'));
+        if ($feed_failed) {
+            if ($endpoint == 'register') unset($logData["request.body"]);
+            WC_Tabby_Api::ddlog("info", "feed api: " . $endpoint, null, $logData);
+        }
 
         $result = [];
 

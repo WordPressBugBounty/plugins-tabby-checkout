@@ -1,8 +1,8 @@
 <?php
 
 class WC_Tabby_Config {
-    const ALLOWED_CURRENCIES = ['AED','SAR','KWD'];
-    const ALLOWED_COUNTRIES  = [ 'AE', 'SA', 'KW'];
+    const ALLOWED_CURRENCIES = ['AED','SAR'];
+    const ALLOWED_COUNTRIES  = [ 'AE', 'SA'];
 
     public static function get_tabby_domain($mcode = null) {
         if (is_null($mcode)) $mcode = static::getPromoMerchantCode();
@@ -21,13 +21,16 @@ class WC_Tabby_Config {
         return 'default';
     }
     public static function isAvailableForCountry($country_code) {
-        if (($allowed = static::getConfiguredCountries()) === false) {
-            $allowed = static::ALLOWED_COUNTRIES;
-        };
-        return in_array($country_code, $allowed);
+        return in_array($country_code, static::getConfiguredCountries());
     }
     public static function getConfiguredCountries() {
-        return get_option('tabby_countries', false);
+        $countries = get_option('tabby_countries', false);
+
+        // never saved (or corrupted): all live markets
+        if (!is_array($countries)) return static::ALLOWED_COUNTRIES;
+
+        // saved selection restricted to the live markets; an empty selection keeps Tabby off, as before
+        return array_values(array_intersect($countries, static::ALLOWED_COUNTRIES));
     }
     public static function getShareFeed() {
         return get_option('tabby_share_feed', 'yes') == 'yes';

@@ -21,7 +21,10 @@ class WC_REST_Tabby_Controller {
                 WC_Tabby_Api::ddlog('info', 'webhook received', null, [
                     'payment.id'         => $txn->id,
                     'order.reference_id' => $txn->order->reference_id,
-                    'body'               => $txn
+                    'payment.status'     => property_exists($txn, 'status') ? $txn->status : null,
+                    'payment.amount'     => property_exists($txn, 'amount') ? $txn->amount : null,
+                    'payment.currency'   => property_exists($txn, 'currency') ? $txn->currency : null,
+                    'payment.is_test'    => property_exists($txn, 'is_test') ? $txn->is_test : null,
                 ]);
             
                 if ($order = woocommerce_tabby_get_order_by_reference_id( $txn->order->reference_id )) {
@@ -53,7 +56,12 @@ class WC_REST_Tabby_Controller {
                         $lock->unlock($order->get_id());
                     }
                 } else {
-                    throw new \Exception("Not order found with reference id: " . $txn->order->reference_id);
+                    // usual cause: the unpaid order was already deleted by the timeout cron
+                    WC_Tabby_Api::ddlog_with('warn', 'webhook exception', [
+                        'payment.id'         => $txn->id,
+                        'order.reference_id' => $txn->order->reference_id,
+                    ], ['reason' => 'order_not_found']);
+                    return new WP_Error('tabby_webhook_error', __('Webhook execution error'), array('status' => 503));
                 }
             } else {
                 throw new \Exception("Not valid data posted");
