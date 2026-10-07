@@ -3,7 +3,7 @@ Contributors: tabbyai
 Tags: tabby, tabby plugin, tabby checkout, bnpl, tabby bnpl
 Requires at least: 5.7
 Tested up to: 7.1
-Stable tag: 5.16.0
+Stable tag: 5.16.1
 Requires PHP: 7.4
 License: MIT
 License URI: https://opensource.org/licenses/MIT
@@ -37,6 +37,17 @@ This plugin connects to the following services:
 Tabby terms: https://tabby.ai/en-AE/terms-and-conditions - Tabby privacy policy: https://tabby.ai/en-AE/privacy-policy - Datadog privacy policy: https://www.datadoghq.com/legal/privacy/
 
 == Changelog ==
+
+= 5.16.1 =
+
+* Store insights: status changes are sent only when a placed order is cancelled, fails or is paid again after that; abandoned checkouts, and orders and refunds placed before the update, are no longer reported
+* Store insights: Apple Pay, Taly, Deema and a few more payment methods recognised; basket amounts include tax
+* Product feed: a failing feed request is logged once a day, without the request body
+* A webhook for an unknown order (another site on the same Tabby keys, deleted unpaid order) is logged once per payment instead of on every retry
+* No Tabby availability request for an empty cart
+* Tabby availability check: the cache follows the buyer's phone (or email when there is no phone); rejections are cached for 15 minutes, and a buyer rejected for a basket is not re-checked for the same or a bigger one within that time
+* Product feed registration is retried once a day after a refusal (4 hours after a network error)
+* Malformed webhook requests no longer cause a PHP error on PHP 8; no PHP warning on block checkout orders
 
 = 5.16.0 =
 

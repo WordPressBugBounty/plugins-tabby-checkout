@@ -77,7 +77,7 @@ class WC_Tabby {
     public static function woocommerce_checkout_order_processed($order_id, $post_data, $order) {
         static::woocommerce_store_api_checkout_order_processed($order);
     }
-    public static function woocommerce_store_api_checkout_order_processed(&$order) {
+    public static function woocommerce_store_api_checkout_order_processed($order) {
         WC_Gateway_Tabby_Checkout_Base::clean_order_transaction_id($order);
     }
     public static function rest_checkout_process_payment_with_context( PaymentContext $context, PaymentResult &$result ) {

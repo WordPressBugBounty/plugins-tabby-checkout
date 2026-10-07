@@ -349,33 +349,117 @@ class WC_Gateway_Tabby_Checkout_Base extends WC_Payment_Gateway {
 
         return $is_available;
     }
+    const AVAILABILITY_TTL = HOUR_IN_SECONDS;
+    const REJECTION_TTL    = 15 * MINUTE_IN_SECONDS;
+
+    /**
+     * Availability (prescoring) check with a cache.
+     *
+     * The decision depends on the amount and the buyer: the phone when it is set (the email is then
+     * ignored), otherwise the email. Approvals are cached for an hour, rejections for 15 minutes, so
+     * checkout refreshes do not call the API again. A buyer-level rejection (not_available,
+     * order_amount_too_high) also blocks the same or a bigger basket for 15 minutes and wins over an older
+     * cached approval; a smaller basket is checked again, and its approval lifts a not_available block.
+     * Keys include a hash of the secret key, so sandbox answers do not survive a switch to live keys.
+     */
     public static function get_cached_availability_request($request) {
-        $sha256 = hash('sha256', json_encode(static::get_cached_values($request)));
-        $tr_name = 'tabby_api_cache_' . $sha256;
+        // an empty cart (amount 0) is always rejected by the API with 400 "should be positive"
+        $amount = (float)$request["payment"]["amount"];
+        if ($amount <= 0) {
+            return new \StdClass();
+        }
+        $buyer_key = static::get_buyer_rejection_key($request);
+        $block = $buyer_key ? get_transient($buyer_key) : false;
+        if (is_array($block) && $amount >= (float)$block['amount']) {
+            return new \StdClass();
+        }
+        $tr_name = static::get_availability_cache_key($request);
+        if (($available_products = get_transient($tr_name)) !== false) {
+            return $available_products;
+        }
 
-        if (($available_products = get_transient($tr_name)) === false) {
-            $result = (new WC_Tabby_Api($request['merchant_code']))->request('checkout', 'POST', $request);
+        $result = (new WC_Tabby_Api($request['merchant_code']))->request('checkout', 'POST', $request);
 
-            if ($result && property_exists($result, 'status') && $result->status == 'created') {
-                $available_products = $result->configuration->available_products;
-                set_transient($tr_name, $available_products, HOUR_IN_SECONDS);
-            } else {
-                $available_products = new \StdClass();
+        if (is_object($result) && property_exists($result, 'status') && $result->status == 'created') {
+            $available_products = $result->configuration->available_products;
+            set_transient($tr_name, $available_products, static::AVAILABILITY_TTL);
+            // an approval proves "buyer not eligible" is stale (a limit block stays: smaller baskets fit it)
+            if (is_array($block) && $block['reason'] === 'not_available') {
+                foreach ((array)($block['amounts'] ?? []) as $rejected) {
+                    $stale = $request;
+                    $stale['payment']['amount'] = $rejected;
+                    delete_transient(static::get_availability_cache_key($stale));
+                }
+                delete_transient($buyer_key);
             }
+        } elseif (is_object($result) && property_exists($result, 'status') && $result->status == 'rejected') {
+            $available_products = new \StdClass();
+            // without a phone or an email the answer is not tied to a buyer: do not cache it
+            if ($buyer_key) {
+                set_transient($tr_name, $available_products, static::REJECTION_TTL);
+                $reason = isset($result->configuration->products->installments->rejection_reason)
+                    ? (string)$result->configuration->products->installments->rejection_reason : '';
+                // only buyer-level answers: the buyer is not eligible, or the basket is above their limit
+                if (in_array($reason, ['not_available', 'order_amount_too_high'], true)) {
+                    // remember the rejected amounts too, so lifting the block also clears their cached rejections
+                    $amounts = is_array($block) ? (array)($block['amounts'] ?? []) : [];
+                    $amounts = array_slice(array_values(array_unique(array_merge($amounts, [$request["payment"]["amount"]]))), -20);
+                    $lowest  = is_array($block) && (float)$block['amount'] <= $amount;
+                    set_transient($buyer_key, [
+                        'amount'  => $lowest ? (float)$block['amount'] : $amount,
+                        'reason'  => $lowest ? $block['reason'] : $reason,
+                        'amounts' => $amounts,
+                    ], static::REJECTION_TTL);
+                }
+            }
+        } else {
+            // API or network error: not cached, the next checkout refresh asks again
+            $available_products = new \StdClass();
         }
 
         return $available_products;
     }
 
-    protected static function get_cached_values($request) {
-        return [
-            "lang"          => $request["lang"],
-            "merchant_code" => $request["merchant_code"],
-            "amount"        => $request["payment"]["amount"],
-            "currency"      => $request["payment"]["currency"],
-            "email"         => $request["payment"]["buyer"]["email"],
-            "phone"         => $request["payment"]["buyer"]["phone"]
-        ];
+    /**
+     * Cached availability for a request without calling the API: true / false, or null when unknown.
+     */
+    public static function get_cached_availability($request) {
+        $amount = (float)$request["payment"]["amount"];
+        if ($amount <= 0) return false;
+        $buyer_key = static::get_buyer_rejection_key($request);
+        $block = $buyer_key ? get_transient($buyer_key) : false;
+        if (is_array($block) && $amount >= (float)$block['amount']) return false;
+        $cached = get_transient(static::get_availability_cache_key($request));
+        if ($cached !== false) return is_object($cached) && property_exists($cached, WC_Gateway_Tabby_Installments::TABBY_METHOD_CODE);
+        return null;
+    }
+
+    protected static function get_buyer_id($request) {
+        $buyer = isset($request["payment"]["buyer"]) && is_array($request["payment"]["buyer"]) ? $request["payment"]["buyer"] : [];
+        $phone = preg_replace('/\D+/', '', (string)($buyer["phone"] ?? ''));
+        if ($phone !== '') return 'p:' . $phone;
+        $email = strtolower(trim((string)($buyer["email"] ?? '')));
+        return $email !== '' ? 'e:' . $email : '';
+    }
+
+    protected static function get_availability_cache_key($request) {
+        return 'tabby_api_cache_' . hash('sha256', json_encode([
+            static::key_scope(),
+            $request["merchant_code"],
+            $request["payment"]["currency"],
+            $request["payment"]["amount"],
+            static::get_buyer_id($request),
+        ]));
+    }
+
+    protected static function get_buyer_rejection_key($request) {
+        $buyer = static::get_buyer_id($request);
+        if ($buyer === '') return '';
+        return 'tabby_api_rej_' . hash('sha256', json_encode([static::key_scope(), $request["merchant_code"], $request["payment"]["currency"], $buyer]));
+    }
+
+    protected static function key_scope() {
+        return substr(hash('sha256', (string)WC_Tabby_Api::get_api_option('secret_key')), 0, 12);
     }
 
     public function getFrontBuyerObject() {

@@ -11,12 +11,29 @@ class WC_REST_Tabby_Controller {
         add_filter( 'woocommerce_rest_api_get_rest_namespaces', array('WC_REST_Tabby_Controller', 'register'));
     }
 
+    const MISSED_OPTION = 'tabby_webhook_missed';
+    const MISSED_KEEP   = 200;
+
+    /**
+     * True the first time a payment id is seen with no matching order (last MISSED_KEEP ids remembered).
+     */
+    protected static function first_miss($payment_id) {
+        if (!preg_match('/^[0-9a-f-]{36}$/i', $payment_id)) return false;
+        $seen = get_option(self::MISSED_OPTION, []);
+        if (!is_array($seen)) $seen = [];
+        if (in_array($payment_id, $seen, true)) return false;
+        $seen[] = $payment_id;
+        if (count($seen) > self::MISSED_KEEP) $seen = array_slice($seen, -self::MISSED_KEEP);
+        update_option(self::MISSED_OPTION, $seen, false);
+        return true;
+    }
+
     public function webhook($data) {
         
         try {
             $txn = json_decode($data->get_body());
 
-            if ($txn && property_exists($txn, 'order') && property_exists($txn->order, 'reference_id')) {
+            if (is_object($txn) && property_exists($txn, 'id') && property_exists($txn, 'order') && is_object($txn->order) && property_exists($txn->order, 'reference_id')) {
 
                 WC_Tabby_Api::ddlog('info', 'webhook received', null, [
                     'payment.id'         => $txn->id,
@@ -56,18 +73,23 @@ class WC_REST_Tabby_Controller {
                         $lock->unlock($order->get_id());
                     }
                 } else {
-                    // usual cause: the unpaid order was already deleted by the timeout cron
-                    WC_Tabby_Api::ddlog_with('warn', 'webhook exception', [
-                        'payment.id'         => $txn->id,
-                        'order.reference_id' => $txn->order->reference_id,
-                    ], ['reason' => 'order_not_found']);
+                    // usual causes: the unpaid order was already deleted by the timeout cron, or the payment
+                    // belongs to another site on the same Tabby keys (staging copy, second domain, app).
+                    // Answer 503 as before so Tabby keeps retrying (the order may just not be visible yet),
+                    // but log each payment once; the seen list is one capped option, so requests cannot grow the DB.
+                    if (static::first_miss((string)$txn->id)) {
+                        WC_Tabby_Api::ddlog_with('warn', 'webhook exception', [
+                            'payment.id'         => $txn->id,
+                            'order.reference_id' => $txn->order->reference_id,
+                        ], ['reason' => 'order_not_found']);
+                    }
                     return new WP_Error('tabby_webhook_error', __('Webhook execution error'), array('status' => 503));
                 }
             } else {
                 throw new \Exception("Not valid data posted");
             }
 
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             WC_Tabby_Api::ddlog('info', 'webhook exception', $e, [
                 'body'               => $data->get_body()
             ]);

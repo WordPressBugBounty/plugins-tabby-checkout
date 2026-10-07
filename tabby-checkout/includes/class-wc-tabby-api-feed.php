@@ -1,6 +1,7 @@
 <?php
 
 class WC_Tabby_Api_Feed {
+    private $last_status = null;
     const TABBY_CHECKOUT_FEED_TOKEN_OPTION = 'tabby_checkout_feed_token';
     const TABBY_CHECKOUT_FEED_CRED_OPTION = 'tabby_checkout_feed_cred';
     const TABBY_CHECKOUT_FEED_REG_ATTEMPT = 'tabby_checkout_feed_reg_attempt';
@@ -63,8 +64,10 @@ class WC_Tabby_Api_Feed {
             update_option(self::TABBY_CHECKOUT_FEED_CRED_OPTION, json_encode($this->getFeedCredentials()));
             return true;
         } else {
-            // registration failed - set transient to 4 hours
-            update_option(self::TABBY_CHECKOUT_FEED_REG_ATTEMPT, time() + 4 * HOUR_IN_SECONDS);
+            // a business answer (paused, declined, not available for marketplace) holds for days: retry daily;
+            // a network error or a 5xx is transient: retry in 4 hours as before
+            $transient = $this->last_status === 'error' || (int)$this->last_status >= 500 || in_array((int)$this->last_status, [408, 425, 429], true);
+            update_option(self::TABBY_CHECKOUT_FEED_REG_ATTEMPT, time() + ($transient ? 4 * HOUR_IN_SECONDS : DAY_IN_SECONDS));
 
             // log site logo for failed registrations
             if (has_custom_logo()) {
@@ -163,6 +166,7 @@ class WC_Tabby_Api_Feed {
 
 
         $response = $client->request($url, $args);
+        $this->last_status = is_wp_error($response) ? 'error' : (int)$response["response"]["code"];
         $er = error_reporting(E_ERROR);
         $logData = array(
             "request.url"       => $url,
@@ -179,9 +183,16 @@ class WC_Tabby_Api_Feed {
         $feed_failed = is_wp_error($response)
             || (int)$response["response"]["code"] >= 300
             || (is_object($decoded = json_decode($response["body"])) && property_exists($decoded, 'errors'));
+        // the gateway answers the same way for hours (registration paused, store not found): log each
+        // endpoint/status once a day, without the request body (credentials on register, the catalogue otherwise)
         if ($feed_failed) {
-            if ($endpoint == 'register') unset($logData["request.body"]);
-            WC_Tabby_Api::ddlog("info", "feed api: " . $endpoint, null, $logData);
+            $key = 'tabby_feed_err_' . md5($endpoint . '|' . $logData["response.status"]);
+            if (false === get_transient($key)) {
+                set_transient($key, 1, DAY_IN_SECONDS);
+                unset($logData["request.body"]);
+                $logData["response.body"] = function_exists('mb_substr') ? mb_substr((string)$logData["response.body"], 0, 500) : substr((string)$logData["response.body"], 0, 500);
+                WC_Tabby_Api::ddlog("info", "feed api: " . $endpoint, null, $logData);
+            }
         }
 
         $result = [];

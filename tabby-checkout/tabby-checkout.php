@@ -3,7 +3,7 @@
  * Plugin Name: Tabby Checkout
  * Plugin URI: https://tabby.ai/
  * Description: Tabby Checkout
- * Version: 5.16.0
+ * Version: 5.16.1
  * Author: Tabby
  * Author URI: https://tabby.ai
  * License: MIT
@@ -16,7 +16,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define ('MODULE_TABBY_CHECKOUT_VERSION', '5.16.0');
+define ('MODULE_TABBY_CHECKOUT_VERSION', '5.16.1');
 
 //define ('TABBY_DEV_DOMAINS', true);
 
