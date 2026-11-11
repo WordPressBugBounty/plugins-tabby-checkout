@@ -270,17 +270,6 @@ Set up the limit between 0 - 50000 to show Standard promotion snippets for the a
                 'class'    => 'promo-hidden',
                 'desc'     => __( 'Hide Tabby payment methods on checkout if not available', 'tabby-checkout' ),
             );
-            $settings_tabby[] = array(
-                'name'     => __( 'Debug', 'tabby-checkout' ),
-                'id'       => 'tabby_checkout_debug',
-                'type'     => 'checkbox',
-                'class'    => 'promo-hidden',
-                'desc'     => __( 'Enable API request/reply logging', 'tabby-checkout' )
-                    . '<br /><span class="description">'
-                    . __( 'Writes Tabby API requests and responses to a log file on your own server: wp-content/plugins/tabby-checkout/log/tabby.log. Turn it on only while investigating an issue, then share the file with the Tabby integrations team for faster troubleshooting. Secret keys are masked in the file. Turning this off deletes the log.', 'tabby-checkout' )
-                    . '</span>',
-                'default'  => 'no'
-            );
             
             $settings_tabby[] = array( 'type' => 'sectionend', 'id' => 'tabby_api' );
             $settings_tabby[] = array(

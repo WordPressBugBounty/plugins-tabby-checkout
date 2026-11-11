@@ -3,7 +3,7 @@ Contributors: tabbyai
 Tags: tabby, tabby plugin, tabby checkout, bnpl, tabby bnpl
 Requires at least: 5.7
 Tested up to: 7.1
-Stable tag: 5.16.1
+Stable tag: 5.16.2
 Requires PHP: 7.4
 License: MIT
 License URI: https://opensource.org/licenses/MIT

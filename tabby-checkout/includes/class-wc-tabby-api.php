@@ -55,12 +55,9 @@ class WC_Tabby_Api {
             $args['headers']['X-Merchant-Code'] = $merch_code;
         }
 
-        static::debug(['request', $endpoint, $method, (array)$args]);
-
         if ($method !== 'GET') {
             $args['headers']['Content-Type'] = 'application/json';
             $params = json_encode($data);
-            static::debug(['request - params', $params]);
             $args['body'] = $params;
         }
 
@@ -95,7 +92,6 @@ error_reporting($er);
         ]);
 
         $result = [];
-        static::debug(['response', (array)$response]);
 
         if (is_wp_error($response)) {
             //throw new \Exception( $response->get_error_message() );
@@ -105,7 +101,6 @@ error_reporting($er);
         switch ($response['response']['code']) {
         case 200:
             $result = json_decode($response["body"]) ?: new \StdClass();
-            static::debug(['response - success data', (array)$result]);
             break;
         case 403:
             if (substr(trim($response["body"]), 0, 15) == '<!DOCTYPE html>') {
@@ -116,7 +111,6 @@ error_reporting($er);
             $msg = "Server returned: " . $response['response']['code'] . '. ';
             if (!empty($body)) {
                 $result = json_decode($body) ?: new \StdClass();
-                static::debug(['response - body - ', (array)$result]);
             }
             break;
         }
@@ -124,21 +118,6 @@ error_reporting($er);
         return $result;
     }
 
-    public static function debug($data) {
-        if (static::get_api_option('debug', 'no') == 'yes') {
-            if (!file_exists(__DIR__ . '/../log')) mkdir (__DIR__ . '/../log', 0777);
-            $fp = fopen(__DIR__ . '/../log/tabby.log', "a+");
-            $msg = self::mask_secret_key(print_r($data, true));
-            fputs($fp, date("[Y-m-d H:i:s] ") . $msg);
-            fclose($fp);
-        } else {
-            //if log file exists, delete it
-            if (file_exists(__DIR__ . '/../log/tabby.log')) {
-                unlink(__DIR__ . '/../log/tabby.log');
-                rmdir(__DIR__ . '/../log/');
-            }
-        };
-    }
     public static function mask_secret_key($str) {
         return preg_replace("#Bearer sk_[^\n]*\-[0-9a-f]{8}([0-9a-f]{4})#s", "Bearer sk_XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXX\\1\n", $str);
     }

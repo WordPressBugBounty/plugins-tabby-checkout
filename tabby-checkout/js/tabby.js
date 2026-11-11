@@ -111,7 +111,6 @@ class TabbyRenderer {
         try {
             jQuery('form').removeClass( 'processing' ).unblock();
         } catch (error) {
-            if (tabbyRenderer.config.debug) console.log(error);
         }
     }
     create() {
@@ -180,13 +179,10 @@ class TabbyRenderer {
                 tabbyRenderer.formFilled = true;
                 // do nothing
                 if (tabbyRenderer.actualSession > sessNum) {
-                    if (tabbyRenderer.config.debug) console.log("ignore old response");
                     return;
                 }
                 // create session error
                 if (!data.hasOwnProperty('status') || data.status != 'created') {
-                    if (tabbyRenderer.config.debug) console.log('create session error', data);
-    
                     tabbyRenderer.disableButton();
                     return;
                 }

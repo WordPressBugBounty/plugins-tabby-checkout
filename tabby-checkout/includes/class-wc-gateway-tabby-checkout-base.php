@@ -232,7 +232,6 @@ class WC_Gateway_Tabby_Checkout_Base extends WC_Payment_Gateway {
 
     public function getFrontTabbyConfig() {
         return [
-            'debug'         => $this->get_api_option('debug') == 'yes' ? 1 : 0,
             'order_key'     => false,
             'hideMethods'   => $this->get_api_option('hide_methods') == 'yes',
             'ignoreEmail'   => apply_filters('tabby_checkout_ignore_email', false),
@@ -740,7 +739,6 @@ class WC_Gateway_Tabby_Checkout_Base extends WC_Payment_Gateway {
                 ]];
 
                 $result = $this->request($order, $payment_id, 'PUT', $data);
-                $this->debug(['authorize - update order #  - ', (array)$result]);
               }
 
               if ($res->status == 'CREATED') {
@@ -845,10 +843,7 @@ class WC_Gateway_Tabby_Checkout_Base extends WC_Payment_Gateway {
                   ];
               }
 
-
-              $this->debug(['capture', $payment_id, $data]);
               $result = $this->request($order, $payment_id . '/captures', 'POST', $data);
-              $this->debug(['capture - result', (array)$result]);
 
               if (property_exists($result, 'captures') && is_array($result->captures)) {
                 $txn = array_pop($result->captures);
@@ -981,9 +976,7 @@ class WC_Gateway_Tabby_Checkout_Base extends WC_Payment_Gateway {
                   'reference_id'  => $item->get_product()->get_id() . ''
               ];
           }
-          $this->debug(['refund', $payment_id, $data]);
           $result = $this->request($order, $payment_id . '/refunds', 'POST', $data);
-          $this->debug(['refund - result', (array)$result]);
 
           $txn = array_pop($result->refunds);
           if (!$txn) {
@@ -1013,10 +1006,6 @@ class WC_Gateway_Tabby_Checkout_Base extends WC_Payment_Gateway {
     public function request($order, $endpoint, $method = 'GET', $data = null) {
         $country = WC_Tabby_Config::getMerchantCode($order);
         return (new WC_Tabby_Api($country))->request('payments/' . $endpoint, $method, $data);
-    }
-
-    protected function debug($data) {
-        WC_Tabby_Api::debug($data);
     }
 
     protected function ddlog($status = "error", $message = "Something went wrong", $e = null, $data = null) {
